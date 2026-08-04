@@ -1,0 +1,31 @@
+{
+  "name": "@ivicos/widget-sdk",
+  "version": "0.1.0",
+  "description": "SDK for building external widgets that embed into ivCampus (Rooms and the Personal Dashboard).",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc",
+    "lint": "eslint --ext .ts src/",
+    "test": "tsc --noEmit && npm run lint"
+  },
+  "files": [
+    "lib"
+  ],
+  "keywords": [
+    "ivicos",
+    "ivcampus",
+    "widget"
+  ],
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  }
+}
