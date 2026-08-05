@@ -5,18 +5,18 @@ or the Personal Dashboard. A widget is any page you host at your own HTTPS URL; 
 it in a sandboxed `<iframe>` and this SDK handles the handshake, context, resizing, and RPC
 transport between your page and the host.
 
-This document is the complete guide for external developers: what a widget can and can't do
-today, how to build one, and how to get it live on a real ivCampus org.
+This document is the complete guide for external developers: what a widget can and can't do,
+how to build one, and how to get it live on a real ivCampus org.
 
 ## Status — read this first
 
-This is an early, internal-only phase of the widget system. Concretely, today:
+This is an early, internal-only phase of the widget system. Concretely:
 
 - Widgets are **display-only**. They receive read-only display context (theme, locale, which
   room/area/campus they're in, the viewer's display name) and can render, resize, and react to
   visibility changes. They **cannot** read or write any ivCampus data (rooms, messages, users,
   files — nothing). `WidgetSDK.call()` exists as forward-compatible transport for a future scoped
-  data-access phase, but any call made today goes unanswered ("not available in this phase").
+  data-access phase, but any call goes unanswered ("not available in this phase").
 - There is **no self-serve publishing**. Every widget goes through manual review before it's
   usable by anyone (see [Submitting your widget](#submitting-your-widget) below).
 - The SDK is **not published to a package registry** — see [Install](#install).
@@ -92,7 +92,7 @@ interface WidgetContext {
 That's the entire surface. No user ID, no email, no auth token, no bearer credential of any
 kind, no access to any ivCampus API. If your widget needs a backend, it's **your own backend** —
 the widget page talks to whatever server you control, using whatever auth model you build for
-it; ivCampus is not in that loop today.
+it; ivCampus is not in that loop.
 
 ## Hosting requirements
 
