@@ -219,3 +219,8 @@ npm install
 npm run build   # tsc -> lib/ (real ESM output - see git history if this ever regresses to CJS)
 npm test        # tsc --noEmit + eslint
 ```
+
+`lib/` is committed (see [Install](#install) for why), which means it does **not** regenerate
+itself automatically — if you change anything in `src/`, you must run `npm run build` and
+commit the resulting changes in `lib/` in the same commit. Nothing will fail loudly if you
+forget; consumers will just silently keep getting the old compiled output.
