@@ -34,6 +34,13 @@ Not published to npm. Consumed as a pinned git dependency:
 Pin to a specific commit SHA, not a branch — there's no semver/tagging discipline on this repo
 yet, so `main` can change under you.
 
+The compiled `lib/` output is committed to this repo (not built on install), specifically so
+this works identically under npm, yarn, and pnpm — pnpm in particular blocks dependency
+lifecycle scripts (`prepare`/`postinstall`) by default as a supply-chain safeguard, which would
+otherwise silently skip a build-on-install step and leave you with a "module not found" error
+that has nothing obviously to do with pnpm. There's nothing to build here; the files are already
+there.
+
 ## Quick start
 
 ```ts
