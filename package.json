@@ -2,6 +2,7 @@
   "name": "@ivicos/widget-sdk",
   "version": "0.1.0",
   "description": "SDK for building external widgets that embed into ivCampus (Rooms and the Personal Dashboard).",
+  "type": "module",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {

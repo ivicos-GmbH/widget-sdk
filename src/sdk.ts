@@ -1,4 +1,4 @@
-import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types';
+import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types.js';
 
 function randomNonce(): string {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {

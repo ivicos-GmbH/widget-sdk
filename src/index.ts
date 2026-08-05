@@ -1,3 +1,3 @@
-export { WidgetSDK } from './sdk';
-export { SDK_VERSION } from './types';
-export type { WidgetContext, InitOptions } from './types';
+export { WidgetSDK } from './sdk.js';
+export { SDK_VERSION } from './types.js';
+export type { WidgetContext, InitOptions } from './types.js';
