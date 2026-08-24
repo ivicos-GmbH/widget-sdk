@@ -10,7 +10,7 @@ how to build one, and how to get it live on a real ivCampus org.
 
 ## Status — read this first
 
-This is an early, internal-only phase of the widget system. Concretely:
+This is an early phase of the widget system, with real constraints. Concretely:
 
 - Widgets are **display-only by default**. They always receive read-only display context (theme,
   locale, which room/area/campus they're in, the viewer's display name, avatar, and coarse
@@ -35,20 +35,38 @@ Published to [GitHub Packages](https://github.com/features/packages) (npm-compat
 access token, not just a package name; there's no anonymous `npm install` for GitHub Packages'
 npm registry, even for public packages.
 
-1. Add this to your project's `.npmrc` (or `~/.npmrc`):
+1. Configure the registry for your package manager. Generate a classic GitHub personal access
+   token with the `read:packages` scope first — don't commit a real token to a project-level
+   file; use `~/.npmrc`/global Yarn config, or an environment variable substitution, instead.
+
+   **npm / pnpm** — add to your project's `.npmrc` (or `~/.npmrc`):
 
    ```
    @ivicos-gmbh:registry=https://npm.pkg.github.com
-   ```
-
-2. Generate a classic GitHub personal access token with the `read:packages` scope, then add it
-   to your `~/.npmrc` (don't commit a token to a project-level `.npmrc`):
-
-   ```
    //npm.pkg.github.com/:_authToken=<your-token>
    ```
 
-3. Install normally:
+   **Yarn Classic (v1)** — same `.npmrc` as above, but also set `always-auth=true`. Without it,
+   Yarn won't send the auth header when downloading the tarball, and you'll get a cryptic
+   "invalid tar file" error instead of a clear auth failure:
+
+   ```
+   @ivicos-gmbh:registry=https://npm.pkg.github.com
+   //npm.pkg.github.com/:_authToken=<your-token>
+   always-auth=true
+   ```
+
+   **Yarn Berry (v2+)** — `.npmrc` is ignored entirely; use `.yarnrc.yml` instead:
+
+   ```yaml
+   npmScopes:
+     ivicos-gmbh:
+       npmRegistryServer: 'https://npm.pkg.github.com'
+       npmAlwaysAuth: true
+       npmAuthToken: '<your-token>'
+   ```
+
+2. Install normally:
 
    ```json
    "@ivicos-gmbh/widget-sdk": "^0.2.0"
