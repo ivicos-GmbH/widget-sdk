@@ -23,6 +23,7 @@ export type HostToWidgetMessage =
     | { source: 'ivicos-widget-host'; type: 'handshake'; nonce: string }
     | { source: 'ivicos-widget-host'; type: 'context'; context: WidgetContext }
     | { source: 'ivicos-widget-host'; type: 'visibility-change'; visible: boolean }
+    | { source: 'ivicos-widget-host'; type: 'session-ending' }
     | { source: 'ivicos-widget-host'; type: 'rpc-response'; id: string; result?: unknown; error?: string };
 
 export type WidgetToHostMessage =

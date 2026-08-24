@@ -7,6 +7,7 @@ export declare class WidgetSDK {
     private handshakeResolve;
     private contextListeners;
     private visibilityListeners;
+    private sessionEndingListeners;
     private pendingRpcCalls;
     private resizeObserver;
     private lastReportedHeight;
@@ -15,6 +16,7 @@ export declare class WidgetSDK {
     getContext(): WidgetContext | null;
     onContextChange(listener: (context: WidgetContext) => void): () => void;
     onVisibilityChange(listener: (visible: boolean) => void): () => void;
+    onSessionEnding(listener: () => void): () => void;
     reportResize(height: number): void;
     call<TResult = unknown>(method: string, params?: unknown): Promise<TResult>;
     destroy(): void;

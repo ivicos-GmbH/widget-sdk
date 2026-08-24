@@ -25,6 +25,9 @@ export type HostToWidgetMessage = {
     visible: boolean;
 } | {
     source: 'ivicos-widget-host';
+    type: 'session-ending';
+} | {
+    source: 'ivicos-widget-host';
     type: 'rpc-response';
     id: string;
     result?: unknown;

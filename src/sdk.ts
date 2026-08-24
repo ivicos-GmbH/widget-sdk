@@ -31,6 +31,8 @@ export class WidgetSDK {
 
     private visibilityListeners = new Set<(visible: boolean) => void>();
 
+    private sessionEndingListeners = new Set<() => void>();
+
     private pendingRpcCalls = new Map<string, PendingRpcCall>();
 
     private resizeObserver: ResizeObserver | null = null;
@@ -65,6 +67,10 @@ export class WidgetSDK {
             }
             case 'visibility-change': {
                 this.visibilityListeners.forEach((listener) => listener(message.visible));
+                break;
+            }
+            case 'session-ending': {
+                this.sessionEndingListeners.forEach((listener) => listener());
                 break;
             }
             case 'rpc-response': {
@@ -121,6 +127,11 @@ export class WidgetSDK {
         return () => this.visibilityListeners.delete(listener);
     }
 
+    public onSessionEnding(listener: () => void): () => void {
+        this.sessionEndingListeners.add(listener);
+        return () => this.sessionEndingListeners.delete(listener);
+    }
+
     /**
      * Manually report this widget's content height, in case the automatic ResizeObserver
      * (which watches `document.body` by default) isn't tracking the right element.
@@ -147,6 +158,7 @@ export class WidgetSDK {
         this.resizeObserver = null;
         this.contextListeners.clear();
         this.visibilityListeners.clear();
+        this.sessionEndingListeners.clear();
         this.pendingRpcCalls.clear();
     }
 

@@ -232,4 +232,22 @@ describe('WidgetSDK', () => {
         const context = await initPromise;
         expect(context.avatar).toBe('https://cdn.example.com/ada.png');
     });
+
+    it('notifies session-ending listeners and supports unsubscribe', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const listener = vi.fn();
+        const unsubscribe = sdk.onSessionEnding(listener);
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
+        expect(listener).toHaveBeenCalledTimes(1);
+
+        unsubscribe();
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
+        expect(listener).toHaveBeenCalledTimes(1);
+    });
 });
