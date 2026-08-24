@@ -49,3 +49,4 @@ export type WidgetToHostMessage = {
     method: string;
     params?: unknown;
 };
+//# sourceMappingURL=types.d.ts.map

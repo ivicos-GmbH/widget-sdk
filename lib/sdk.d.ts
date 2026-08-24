@@ -23,3 +23,4 @@ export declare class WidgetSDK {
     private waitForFirstContext;
     private startAutoResize;
 }
+//# sourceMappingURL=sdk.d.ts.map

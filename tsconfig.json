@@ -5,6 +5,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "declaration": true,
+    "sourceMap": true,
+    "declarationMap": true,
     "outDir": "lib",
     "strict": true,
     "removeComments": true,
