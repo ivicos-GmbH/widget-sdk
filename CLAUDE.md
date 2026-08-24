@@ -26,6 +26,24 @@ type error fails before any test even runs. `yarn lint`/`yarn build` alone still
 `src/`, matching what actually ships in `lib/`. Use `yarn vitest` (no `run`) for watch mode while
 iterating on a single test.
 
+## Testing and CI
+
+`test/sdk.test.ts` (Vitest, `jsdom` environment) covers the postMessage protocol end-to-end:
+handshake/context flow, origin pinning (both the `event.origin` check and the
+`event.source === window.parent` check), visibility/context listener unsubscribe, `reportResize`
+dedup, `call()`/RPC round-trips including unrecognized response ids, and `destroy()` cleanup.
+When touching `onMessage`, `waitForHandshake`, or anything origin/security-related in `sdk.ts`,
+run `yarn test` and extend this suite rather than trusting manual testing.
+
+`waitForHandshake()` resolves via a stored resolver called from `completeHandshake()` — the same
+pattern `waitForFirstContext()` already used — rather than polling. Follow that pattern for any
+similar "wait until an async message arrives" logic added later; don't reintroduce a `setTimeout`
+poll loop.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `yarn build && yarn test` on every push/PR to
+`main`, then fails the check if `lib/` differs from a fresh build — this is the automated version
+of the "rebuild and commit `lib/`" rule below.
+
 ## Critical: `lib/` is committed, not generated on install
 
 The compiled `lib/` output is checked into git (this is intentional — see README's "Install"
@@ -91,5 +109,5 @@ current status in README.md first rather than assuming `call()` is wired up to a
 
 Enforced via ESLint (`eslint:recommended` + `@typescript-eslint/recommended`, `no-explicit-any`
 turned off) and Prettier (`.prettierrc.json`: single quotes, semicolons, 4-space indent, no
-trailing commas, 140-char width). `npm run lint` catches both; Prettier issues surface as
+trailing commas, 140-char width). `yarn lint` catches both; Prettier issues surface as
 warnings, not errors.
