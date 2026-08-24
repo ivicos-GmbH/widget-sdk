@@ -27,6 +27,13 @@ export interface WidgetRoomInfo {
     members?: Array<{ id: string; name: string }>;
 }
 
+/** Information about the personal room. */
+export interface WidgetPersonalRoomInfo {
+    roomId: string;
+    topImageIndex: number;
+    bottomImageIndex: number;
+}
+
 export interface InitOptions {
     /** Must match the `id` this widget was registered under in the ivCampus widget registry. */
     widgetId: string;

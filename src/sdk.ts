@@ -3,6 +3,7 @@ import {
     type HostToWidgetMessage,
     type InitOptions,
     type WidgetContext,
+    type WidgetPersonalRoomInfo,
     type WidgetPresence,
     type WidgetRoomInfo,
     type WidgetToHostMessage
@@ -48,7 +49,8 @@ export class WidgetSDK {
     private pendingRpcCalls = new Map<string, PendingRpcCall>();
 
     public readonly data = {
-        getRoom: (): Promise<WidgetRoomInfo> => this.call<WidgetRoomInfo>('room.get')
+        getRoom: (): Promise<WidgetRoomInfo> => this.call<WidgetRoomInfo>('room.get'),
+        getPersonalRoom: (): Promise<WidgetPersonalRoomInfo> => this.call<WidgetPersonalRoomInfo>('personalRoom.get')
     };
 
     private resizeObserver: ResizeObserver | null = null;

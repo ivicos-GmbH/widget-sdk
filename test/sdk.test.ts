@@ -304,4 +304,32 @@ describe('WidgetSDK', () => {
 
         await expect(roomPromise).resolves.toEqual({ id: 'room-1', name: 'Team Room', memberCount: 3 });
     });
+
+    it('sdk.data.getPersonalRoom() calls personalRoom.get and returns the typed result', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const personalRoomPromise = sdk.data.getPersonalRoom();
+
+        const sentMessages = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+        const rpcRequest = sentMessages[sentMessages.length - 1]?.[0];
+        expect(rpcRequest.type).toBe('rpc-request');
+        expect(rpcRequest.method).toBe('personalRoom.get');
+
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'rpc-response',
+            id: rpcRequest.id,
+            result: { roomId: 'personal-room-1', topImageIndex: 2, bottomImageIndex: 0 }
+        });
+
+        await expect(personalRoomPromise).resolves.toEqual({
+            roomId: 'personal-room-1',
+            topImageIndex: 2,
+            bottomImageIndex: 0
+        });
+    });
 });

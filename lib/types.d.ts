@@ -20,6 +20,11 @@ export interface WidgetRoomInfo {
         name: string;
     }>;
 }
+export interface WidgetPersonalRoomInfo {
+    roomId: string;
+    topImageIndex: number;
+    bottomImageIndex: number;
+}
 export interface InitOptions {
     widgetId: string;
 }
