@@ -207,6 +207,9 @@ describe('WidgetSDK', () => {
         const contextListener = vi.fn();
         sdk.onContextChange(contextListener);
 
+        const sessionEndingListener = vi.fn();
+        sdk.onSessionEnding(sessionEndingListener);
+
         sdk.destroy();
 
         emitFromHost(parent, {
@@ -214,7 +217,125 @@ describe('WidgetSDK', () => {
             type: 'context',
             context: { theme: 'dark', locale: 'de', campusId: 'campus-2', displayName: 'Eve' }
         });
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
 
         expect(contextListener).not.toHaveBeenCalled();
+        expect(sessionEndingListener).not.toHaveBeenCalled();
+    });
+
+    it('destroy() rejects any in-flight rpc call rather than leaving it hanging', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const roomPromise = sdk.data.getRoom();
+        sdk.destroy();
+
+        await expect(roomPromise).rejects.toThrow();
+    });
+
+    it('exposes optional avatar and status fields on context', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent, {
+            theme: 'light',
+            locale: 'en',
+            campusId: 'campus-1',
+            displayName: 'Ada',
+            avatar: 'https://cdn.example.com/ada.png',
+            status: 'online'
+        });
+        const context = await initPromise;
+        expect(context.avatar).toBe('https://cdn.example.com/ada.png');
+        expect(context.status).toBe('online');
+    });
+
+    it('notifies session-ending listeners and supports unsubscribe', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const listener = vi.fn();
+        const unsubscribe = sdk.onSessionEnding(listener);
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
+        expect(listener).toHaveBeenCalledTimes(1);
+
+        unsubscribe();
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
+        expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('sdk.data.getRoom() calls room.get and returns the typed result', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const roomPromise = sdk.data.getRoom();
+
+        const sentMessages = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+        const rpcRequest = sentMessages[sentMessages.length - 1]?.[0];
+        expect(rpcRequest.type).toBe('rpc-request');
+        expect(rpcRequest.method).toBe('room.get');
+
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'rpc-response',
+            id: rpcRequest.id,
+            result: {
+                id: 'room-1',
+                name: 'Team Room',
+                iconKey: 'rocket',
+                isPrivate: false,
+                isAudioOnly: false,
+                isOpenForVisitors: true,
+                whitelist: ['user-1', 'user-2'],
+                creatorId: 'user-1'
+            }
+        });
+
+        await expect(roomPromise).resolves.toEqual({
+            id: 'room-1',
+            name: 'Team Room',
+            iconKey: 'rocket',
+            isPrivate: false,
+            isAudioOnly: false,
+            isOpenForVisitors: true,
+            whitelist: ['user-1', 'user-2'],
+            creatorId: 'user-1'
+        });
+    });
+
+    it('sdk.data.getPersonalRoom() calls personalRoom.get and returns the typed result', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const personalRoomPromise = sdk.data.getPersonalRoom();
+
+        const sentMessages = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+        const rpcRequest = sentMessages[sentMessages.length - 1]?.[0];
+        expect(rpcRequest.type).toBe('rpc-request');
+        expect(rpcRequest.method).toBe('personalRoom.get');
+
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'rpc-response',
+            id: rpcRequest.id,
+            result: { roomId: 'personal-room-1', topImageIndex: 2, bottomImageIndex: 0 }
+        });
+
+        await expect(personalRoomPromise).resolves.toEqual({
+            roomId: 'personal-room-1',
+            topImageIndex: 2,
+            bottomImageIndex: 0
+        });
     });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@ivicos-gmbh/widget-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SDK for building external widgets that embed into ivCampus (Rooms and the Personal Dashboard).",
   "repository": "https://github.com/ivicos-GmbH/widget-sdk.git",
   "packageManager": "yarn@1.22.22",

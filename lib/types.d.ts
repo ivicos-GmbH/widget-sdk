@@ -6,6 +6,23 @@ export interface WidgetContext {
     areaId?: string;
     roomId?: string;
     displayName: string;
+    avatar?: string;
+    status?: string;
+}
+export interface WidgetRoomInfo {
+    id: string;
+    name: string;
+    iconKey: string;
+    isPrivate: boolean;
+    isAudioOnly: boolean;
+    isOpenForVisitors: boolean;
+    whitelist?: string[] | null;
+    creatorId?: string;
+}
+export interface WidgetPersonalRoomInfo {
+    roomId: string;
+    topImageIndex: number;
+    bottomImageIndex: number;
 }
 export interface InitOptions {
     widgetId: string;
@@ -22,6 +39,9 @@ export type HostToWidgetMessage = {
     source: 'ivicos-widget-host';
     type: 'visibility-change';
     visible: boolean;
+} | {
+    source: 'ivicos-widget-host';
+    type: 'session-ending';
 } | {
     source: 'ivicos-widget-host';
     type: 'rpc-response';

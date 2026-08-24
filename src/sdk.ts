@@ -1,4 +1,12 @@
-import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types.js';
+import {
+    SDK_VERSION,
+    type HostToWidgetMessage,
+    type InitOptions,
+    type WidgetContext,
+    type WidgetPersonalRoomInfo,
+    type WidgetRoomInfo,
+    type WidgetToHostMessage
+} from './types.js';
 
 function randomNonce(): string {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -31,7 +39,14 @@ export class WidgetSDK {
 
     private visibilityListeners = new Set<(visible: boolean) => void>();
 
+    private sessionEndingListeners = new Set<() => void>();
+
     private pendingRpcCalls = new Map<string, PendingRpcCall>();
+
+    public readonly data = {
+        getRoom: (): Promise<WidgetRoomInfo> => this.call<WidgetRoomInfo>('room.get'),
+        getPersonalRoom: (): Promise<WidgetPersonalRoomInfo> => this.call<WidgetPersonalRoomInfo>('personalRoom.get')
+    };
 
     private resizeObserver: ResizeObserver | null = null;
 
@@ -60,11 +75,15 @@ export class WidgetSDK {
             }
             case 'context': {
                 this.context = message.context;
-                this.contextListeners.forEach((listener) => listener(message.context));
+                [...this.contextListeners].forEach((listener) => listener(message.context));
                 break;
             }
             case 'visibility-change': {
-                this.visibilityListeners.forEach((listener) => listener(message.visible));
+                [...this.visibilityListeners].forEach((listener) => listener(message.visible));
+                break;
+            }
+            case 'session-ending': {
+                [...this.sessionEndingListeners].forEach((listener) => listener());
                 break;
             }
             case 'rpc-response': {
@@ -121,6 +140,11 @@ export class WidgetSDK {
         return () => this.visibilityListeners.delete(listener);
     }
 
+    public onSessionEnding(listener: () => void): () => void {
+        this.sessionEndingListeners.add(listener);
+        return () => this.sessionEndingListeners.delete(listener);
+    }
+
     /**
      * Manually report this widget's content height, in case the automatic ResizeObserver
      * (which watches `document.body` by default) isn't tracking the right element.
@@ -147,6 +171,10 @@ export class WidgetSDK {
         this.resizeObserver = null;
         this.contextListeners.clear();
         this.visibilityListeners.clear();
+        this.sessionEndingListeners.clear();
+        this.pendingRpcCalls.forEach((pending) => {
+            pending.reject(new Error('WidgetSDK: destroyed before the host responded'));
+        });
         this.pendingRpcCalls.clear();
     }
 

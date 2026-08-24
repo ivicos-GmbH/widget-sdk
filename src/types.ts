@@ -9,6 +9,31 @@ export interface WidgetContext {
     areaId?: string;
     roomId?: string;
     displayName: string;
+    /** Optional avatar image URL for the viewing user. Absent if they have none set. */
+    avatar?: string;
+    /** Coarse presence status for the viewing user (e.g. "online", "away"). Absent if unknown. */
+    status?: string;
+}
+
+/** Information about the current room. */
+export interface WidgetRoomInfo {
+    id: string;
+    name: string;
+    iconKey: string;
+    isPrivate: boolean;
+    isAudioOnly: boolean;
+    isOpenForVisitors: boolean;
+    /** Only present if the widget's token scope includes `room:read:members`. */
+    whitelist?: string[] | null;
+    /** Only present if the widget's token scope includes `room:read:members`. */
+    creatorId?: string;
+}
+
+/** Information about the personal room. */
+export interface WidgetPersonalRoomInfo {
+    roomId: string;
+    topImageIndex: number;
+    bottomImageIndex: number;
 }
 
 export interface InitOptions {
@@ -21,6 +46,7 @@ export type HostToWidgetMessage =
     | { source: 'ivicos-widget-host'; type: 'handshake'; nonce: string }
     | { source: 'ivicos-widget-host'; type: 'context'; context: WidgetContext }
     | { source: 'ivicos-widget-host'; type: 'visibility-change'; visible: boolean }
+    | { source: 'ivicos-widget-host'; type: 'session-ending' }
     | { source: 'ivicos-widget-host'; type: 'rpc-response'; id: string; result?: unknown; error?: string };
 
 export type WidgetToHostMessage =
