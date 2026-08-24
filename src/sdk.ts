@@ -25,6 +25,8 @@ export class WidgetSDK {
 
     private handshakeComplete = false;
 
+    private handshakeResolve: (() => void) | null = null;
+
     private contextListeners = new Set<(context: WidgetContext) => void>();
 
     private visibilityListeners = new Set<(visible: boolean) => void>();
@@ -159,23 +161,20 @@ export class WidgetSDK {
         if (this.handshakeComplete) return;
         this.send({ source: 'ivicos-widget-sdk', type: 'handshake-ack', nonce });
         this.handshakeComplete = true;
+        this.handshakeResolve?.();
     }
 
     private waitForHandshake(): Promise<void> {
+        if (this.handshakeComplete) return Promise.resolve();
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error('WidgetSDK: handshake with host timed out - is this page actually loaded as a registered widget?'));
             }, HANDSHAKE_TIMEOUT_MS);
 
-            const check = (): void => {
-                if (this.handshakeComplete) {
-                    clearTimeout(timeout);
-                    resolve();
-                } else {
-                    setTimeout(check, 20);
-                }
+            this.handshakeResolve = () => {
+                clearTimeout(timeout);
+                resolve();
             };
-            check();
         });
     }
 

@@ -4,6 +4,7 @@ export declare class WidgetSDK {
     private hostOrigin;
     private context;
     private handshakeComplete;
+    private handshakeResolve;
     private contextListeners;
     private visibilityListeners;
     private pendingRpcCalls;
