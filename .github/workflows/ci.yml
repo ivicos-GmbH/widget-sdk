@@ -19,4 +19,4 @@ jobs:
       - run: yarn build
       - run: yarn test
       - name: Verify lib/ is up to date
-        run: git diff --exit-code -- lib
+        run: git add -A -- lib && git diff --cached --exit-code -- lib
