@@ -2,13 +2,14 @@
   "name": "@ivicos/widget-sdk",
   "version": "0.1.0",
   "description": "SDK for building external widgets that embed into ivCampus (Rooms and the Personal Dashboard).",
+  "packageManager": "yarn@1.22.22",
   "type": "module",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
     "lint": "eslint --ext .ts src/",
-    "test": "tsc --noEmit && npm run lint"
+    "test": "tsc --noEmit && eslint --ext .ts src/"
   },
   "files": [
     "lib"

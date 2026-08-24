@@ -215,12 +215,13 @@ Test your widget against a real host before submitting, rather than debugging bl
 ## Build (for contributing to the SDK itself)
 
 ```bash
-npm install
-npm run build   # tsc -> lib/ (real ESM output - see git history if this ever regresses to CJS)
-npm test        # tsc --noEmit + eslint
+yarn install
+yarn build   # tsc -> lib/ (real ESM output - see git history if this ever regresses to CJS)
+yarn test    # tsc --noEmit + eslint + vitest
 ```
 
 `lib/` is committed (see [Install](#install) for why), which means it does **not** regenerate
-itself automatically — if you change anything in `src/`, you must run `npm run build` and
+itself automatically — if you change anything in `src/`, you must run `yarn build` and
 commit the resulting changes in `lib/` in the same commit. Nothing will fail loudly if you
-forget; consumers will just silently keep getting the old compiled output.
+forget; consumers will just silently keep getting the old compiled output. CI enforces this on
+every push/PR by diffing a fresh build against what's committed.
