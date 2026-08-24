@@ -4,7 +4,6 @@ import {
     type InitOptions,
     type WidgetContext,
     type WidgetPersonalRoomInfo,
-    type WidgetPresence,
     type WidgetRoomInfo,
     type WidgetToHostMessage
 } from './types.js';
@@ -42,10 +41,6 @@ export class WidgetSDK {
 
     private sessionEndingListeners = new Set<() => void>();
 
-    private presence: WidgetPresence | null = null;
-
-    private presenceListeners = new Set<(presence: WidgetPresence) => void>();
-
     private pendingRpcCalls = new Map<string, PendingRpcCall>();
 
     public readonly data = {
@@ -80,20 +75,15 @@ export class WidgetSDK {
             }
             case 'context': {
                 this.context = message.context;
-                this.contextListeners.forEach((listener) => listener(message.context));
+                [...this.contextListeners].forEach((listener) => listener(message.context));
                 break;
             }
             case 'visibility-change': {
-                this.visibilityListeners.forEach((listener) => listener(message.visible));
+                [...this.visibilityListeners].forEach((listener) => listener(message.visible));
                 break;
             }
             case 'session-ending': {
-                this.sessionEndingListeners.forEach((listener) => listener());
-                break;
-            }
-            case 'presence': {
-                this.presence = message.presence;
-                this.presenceListeners.forEach((listener) => listener(message.presence));
+                [...this.sessionEndingListeners].forEach((listener) => listener());
                 break;
             }
             case 'rpc-response': {
@@ -155,16 +145,6 @@ export class WidgetSDK {
         return () => this.sessionEndingListeners.delete(listener);
     }
 
-    /** The most recently received presence. `null` until the host pushes one. */
-    public getPresence(): WidgetPresence | null {
-        return this.presence;
-    }
-
-    public onPresenceChange(listener: (presence: WidgetPresence) => void): () => void {
-        this.presenceListeners.add(listener);
-        return () => this.presenceListeners.delete(listener);
-    }
-
     /**
      * Manually report this widget's content height, in case the automatic ResizeObserver
      * (which watches `document.body` by default) isn't tracking the right element.
@@ -192,7 +172,9 @@ export class WidgetSDK {
         this.contextListeners.clear();
         this.visibilityListeners.clear();
         this.sessionEndingListeners.clear();
-        this.presenceListeners.clear();
+        this.pendingRpcCalls.forEach((pending) => {
+            pending.reject(new Error('WidgetSDK: destroyed before the host responded'));
+        });
         this.pendingRpcCalls.clear();
     }
 

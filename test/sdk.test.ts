@@ -207,6 +207,9 @@ describe('WidgetSDK', () => {
         const contextListener = vi.fn();
         sdk.onContextChange(contextListener);
 
+        const sessionEndingListener = vi.fn();
+        sdk.onSessionEnding(sessionEndingListener);
+
         sdk.destroy();
 
         emitFromHost(parent, {
@@ -214,11 +217,24 @@ describe('WidgetSDK', () => {
             type: 'context',
             context: { theme: 'dark', locale: 'de', campusId: 'campus-2', displayName: 'Eve' }
         });
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
 
         expect(contextListener).not.toHaveBeenCalled();
+        expect(sessionEndingListener).not.toHaveBeenCalled();
     });
 
-    it('exposes an optional avatar field on context', async () => {
+    it('destroy() rejects any in-flight rpc call rather than leaving it hanging', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const roomPromise = sdk.data.getRoom();
+        sdk.destroy();
+
+        await expect(roomPromise).rejects.toThrow();
+    });
+
+    it('exposes optional avatar and status fields on context', async () => {
         vi.useFakeTimers();
         const initPromise = sdk.init({ widgetId: 'test-widget' });
         await vi.advanceTimersByTimeAsync(0);
@@ -227,10 +243,12 @@ describe('WidgetSDK', () => {
             locale: 'en',
             campusId: 'campus-1',
             displayName: 'Ada',
-            avatar: 'https://cdn.example.com/ada.png'
+            avatar: 'https://cdn.example.com/ada.png',
+            status: 'online'
         });
         const context = await initPromise;
         expect(context.avatar).toBe('https://cdn.example.com/ada.png');
+        expect(context.status).toBe('online');
     });
 
     it('notifies session-ending listeners and supports unsubscribe', async () => {
@@ -251,36 +269,6 @@ describe('WidgetSDK', () => {
         expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it('exposes presence pushes with last-value caching and unsubscribe', async () => {
-        vi.useFakeTimers();
-        const initPromise = sdk.init({ widgetId: 'test-widget' });
-        await vi.advanceTimersByTimeAsync(0);
-        await completeHandshakeAndContext(parent);
-        await initPromise;
-
-        expect(sdk.getPresence()).toBeNull();
-
-        const listener = vi.fn();
-        const unsubscribe = sdk.onPresenceChange(listener);
-
-        emitFromHost(parent, {
-            source: 'ivicos-widget-host',
-            type: 'presence',
-            presence: { status: 'available' }
-        });
-        expect(listener).toHaveBeenCalledWith({ status: 'available' });
-        expect(sdk.getPresence()).toEqual({ status: 'available' });
-
-        unsubscribe();
-        emitFromHost(parent, {
-            source: 'ivicos-widget-host',
-            type: 'presence',
-            presence: { status: 'away' }
-        });
-        expect(listener).toHaveBeenCalledTimes(1);
-        expect(sdk.getPresence()).toEqual({ status: 'away' });
-    });
-
     it('sdk.data.getRoom() calls room.get and returns the typed result', async () => {
         vi.useFakeTimers();
         const initPromise = sdk.init({ widgetId: 'test-widget' });
@@ -299,10 +287,28 @@ describe('WidgetSDK', () => {
             source: 'ivicos-widget-host',
             type: 'rpc-response',
             id: rpcRequest.id,
-            result: { id: 'room-1', name: 'Team Room', memberCount: 3 }
+            result: {
+                id: 'room-1',
+                name: 'Team Room',
+                iconKey: 'rocket',
+                isPrivate: false,
+                isAudioOnly: false,
+                isOpenForVisitors: true,
+                whitelist: ['user-1', 'user-2'],
+                creatorId: 'user-1'
+            }
         });
 
-        await expect(roomPromise).resolves.toEqual({ id: 'room-1', name: 'Team Room', memberCount: 3 });
+        await expect(roomPromise).resolves.toEqual({
+            id: 'room-1',
+            name: 'Team Room',
+            iconKey: 'rocket',
+            isPrivate: false,
+            isAudioOnly: false,
+            isOpenForVisitors: true,
+            whitelist: ['user-1', 'user-2'],
+            creatorId: 'user-1'
+        });
     });
 
     it('sdk.data.getPersonalRoom() calls personalRoom.get and returns the typed result', async () => {

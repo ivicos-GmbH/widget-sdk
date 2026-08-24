@@ -7,18 +7,17 @@ export interface WidgetContext {
     roomId?: string;
     displayName: string;
     avatar?: string;
-}
-export interface WidgetPresence {
-    status: string;
+    status?: string;
 }
 export interface WidgetRoomInfo {
     id: string;
     name: string;
-    memberCount: number;
-    members?: Array<{
-        id: string;
-        name: string;
-    }>;
+    iconKey: string;
+    isPrivate: boolean;
+    isAudioOnly: boolean;
+    isOpenForVisitors: boolean;
+    whitelist?: string[] | null;
+    creatorId?: string;
 }
 export interface WidgetPersonalRoomInfo {
     roomId: string;
@@ -43,10 +42,6 @@ export type HostToWidgetMessage = {
 } | {
     source: 'ivicos-widget-host';
     type: 'session-ending';
-} | {
-    source: 'ivicos-widget-host';
-    type: 'presence';
-    presence: WidgetPresence;
 } | {
     source: 'ivicos-widget-host';
     type: 'rpc-response';
