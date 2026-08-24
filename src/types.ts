@@ -9,6 +9,8 @@ export interface WidgetContext {
     areaId?: string;
     roomId?: string;
     displayName: string;
+    /** Optional avatar image URL for the viewing user. Absent if they have none set. */
+    avatar?: string;
 }
 
 export interface InitOptions {

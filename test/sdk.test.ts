@@ -217,4 +217,19 @@ describe('WidgetSDK', () => {
 
         expect(contextListener).not.toHaveBeenCalled();
     });
+
+    it('exposes an optional avatar field on context', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent, {
+            theme: 'light',
+            locale: 'en',
+            campusId: 'campus-1',
+            displayName: 'Ada',
+            avatar: 'https://cdn.example.com/ada.png'
+        });
+        const context = await initPromise;
+        expect(context.avatar).toBe('https://cdn.example.com/ada.png');
+    });
 });
