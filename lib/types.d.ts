@@ -11,6 +11,15 @@ export interface WidgetContext {
 export interface WidgetPresence {
     status: string;
 }
+export interface WidgetRoomInfo {
+    id: string;
+    name: string;
+    memberCount: number;
+    members?: Array<{
+        id: string;
+        name: string;
+    }>;
+}
 export interface InitOptions {
     widgetId: string;
 }

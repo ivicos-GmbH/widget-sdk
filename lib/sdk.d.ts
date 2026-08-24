@@ -1,4 +1,4 @@
-import { type InitOptions, type WidgetContext, type WidgetPresence } from './types.js';
+import { type InitOptions, type WidgetContext, type WidgetPresence, type WidgetRoomInfo } from './types.js';
 export declare class WidgetSDK {
     private widgetId;
     private hostOrigin;
@@ -11,6 +11,9 @@ export declare class WidgetSDK {
     private presence;
     private presenceListeners;
     private pendingRpcCalls;
+    readonly data: {
+        getRoom: () => Promise<WidgetRoomInfo>;
+    };
     private resizeObserver;
     private lastReportedHeight;
     private onMessage;

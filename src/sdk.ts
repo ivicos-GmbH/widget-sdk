@@ -4,6 +4,7 @@ import {
     type InitOptions,
     type WidgetContext,
     type WidgetPresence,
+    type WidgetRoomInfo,
     type WidgetToHostMessage
 } from './types.js';
 
@@ -45,6 +46,10 @@ export class WidgetSDK {
     private presenceListeners = new Set<(presence: WidgetPresence) => void>();
 
     private pendingRpcCalls = new Map<string, PendingRpcCall>();
+
+    public readonly data = {
+        getRoom: (): Promise<WidgetRoomInfo> => this.call<WidgetRoomInfo>('room.get')
+    };
 
     private resizeObserver: ResizeObserver | null = null;
 

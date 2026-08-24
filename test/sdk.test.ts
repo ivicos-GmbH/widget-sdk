@@ -280,4 +280,28 @@ describe('WidgetSDK', () => {
         expect(listener).toHaveBeenCalledTimes(1);
         expect(sdk.getPresence()).toEqual({ status: 'away' });
     });
+
+    it('sdk.data.getRoom() calls room.get and returns the typed result', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const roomPromise = sdk.data.getRoom();
+
+        const sentMessages = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+        const rpcRequest = sentMessages[sentMessages.length - 1]?.[0];
+        expect(rpcRequest.type).toBe('rpc-request');
+        expect(rpcRequest.method).toBe('room.get');
+
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'rpc-response',
+            id: rpcRequest.id,
+            result: { id: 'room-1', name: 'Team Room', memberCount: 3 }
+        });
+
+        await expect(roomPromise).resolves.toEqual({ id: 'room-1', name: 'Team Room', memberCount: 3 });
+    });
 });

@@ -18,6 +18,15 @@ export interface WidgetPresence {
     status: string;
 }
 
+/** Information about the current room. */
+export interface WidgetRoomInfo {
+    id: string;
+    name: string;
+    memberCount: number;
+    /** Only present if the widget's token scope includes `room:read:members`. */
+    members?: Array<{ id: string; name: string }>;
+}
+
 export interface InitOptions {
     /** Must match the `id` this widget was registered under in the ivCampus widget registry. */
     widgetId: string;
