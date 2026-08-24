@@ -1,4 +1,11 @@
-import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types.js';
+import {
+    SDK_VERSION,
+    type HostToWidgetMessage,
+    type InitOptions,
+    type WidgetContext,
+    type WidgetPresence,
+    type WidgetToHostMessage
+} from './types.js';
 
 function randomNonce(): string {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -32,6 +39,10 @@ export class WidgetSDK {
     private visibilityListeners = new Set<(visible: boolean) => void>();
 
     private sessionEndingListeners = new Set<() => void>();
+
+    private presence: WidgetPresence | null = null;
+
+    private presenceListeners = new Set<(presence: WidgetPresence) => void>();
 
     private pendingRpcCalls = new Map<string, PendingRpcCall>();
 
@@ -71,6 +82,11 @@ export class WidgetSDK {
             }
             case 'session-ending': {
                 this.sessionEndingListeners.forEach((listener) => listener());
+                break;
+            }
+            case 'presence': {
+                this.presence = message.presence;
+                this.presenceListeners.forEach((listener) => listener(message.presence));
                 break;
             }
             case 'rpc-response': {
@@ -132,6 +148,16 @@ export class WidgetSDK {
         return () => this.sessionEndingListeners.delete(listener);
     }
 
+    /** The most recently received presence. `null` until the host pushes one. */
+    public getPresence(): WidgetPresence | null {
+        return this.presence;
+    }
+
+    public onPresenceChange(listener: (presence: WidgetPresence) => void): () => void {
+        this.presenceListeners.add(listener);
+        return () => this.presenceListeners.delete(listener);
+    }
+
     /**
      * Manually report this widget's content height, in case the automatic ResizeObserver
      * (which watches `document.body` by default) isn't tracking the right element.
@@ -159,6 +185,7 @@ export class WidgetSDK {
         this.contextListeners.clear();
         this.visibilityListeners.clear();
         this.sessionEndingListeners.clear();
+        this.presenceListeners.clear();
         this.pendingRpcCalls.clear();
     }
 

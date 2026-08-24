@@ -250,4 +250,34 @@ describe('WidgetSDK', () => {
         emitFromHost(parent, { source: 'ivicos-widget-host', type: 'session-ending' });
         expect(listener).toHaveBeenCalledTimes(1);
     });
+
+    it('exposes presence pushes with last-value caching and unsubscribe', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await vi.advanceTimersByTimeAsync(0);
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        expect(sdk.getPresence()).toBeNull();
+
+        const listener = vi.fn();
+        const unsubscribe = sdk.onPresenceChange(listener);
+
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'presence',
+            presence: { status: 'available' }
+        });
+        expect(listener).toHaveBeenCalledWith({ status: 'available' });
+        expect(sdk.getPresence()).toEqual({ status: 'available' });
+
+        unsubscribe();
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'presence',
+            presence: { status: 'away' }
+        });
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(sdk.getPresence()).toEqual({ status: 'away' });
+    });
 });

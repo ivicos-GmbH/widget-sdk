@@ -8,6 +8,9 @@ export interface WidgetContext {
     displayName: string;
     avatar?: string;
 }
+export interface WidgetPresence {
+    status: string;
+}
 export interface InitOptions {
     widgetId: string;
 }
@@ -26,6 +29,10 @@ export type HostToWidgetMessage = {
 } | {
     source: 'ivicos-widget-host';
     type: 'session-ending';
+} | {
+    source: 'ivicos-widget-host';
+    type: 'presence';
+    presence: WidgetPresence;
 } | {
     source: 'ivicos-widget-host';
     type: 'rpc-response';

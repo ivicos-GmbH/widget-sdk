@@ -13,6 +13,11 @@ export interface WidgetContext {
     avatar?: string;
 }
 
+/** Coarse presence status, pushed for the viewing user only - never queryable for anyone else. */
+export interface WidgetPresence {
+    status: string;
+}
+
 export interface InitOptions {
     /** Must match the `id` this widget was registered under in the ivCampus widget registry. */
     widgetId: string;
@@ -24,6 +29,7 @@ export type HostToWidgetMessage =
     | { source: 'ivicos-widget-host'; type: 'context'; context: WidgetContext }
     | { source: 'ivicos-widget-host'; type: 'visibility-change'; visible: boolean }
     | { source: 'ivicos-widget-host'; type: 'session-ending' }
+    | { source: 'ivicos-widget-host'; type: 'presence'; presence: WidgetPresence }
     | { source: 'ivicos-widget-host'; type: 'rpc-response'; id: string; result?: unknown; error?: string };
 
 export type WidgetToHostMessage =
