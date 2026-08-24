@@ -1,4 +1,4 @@
-# @ivicos/widget-sdk
+# @ivicos-gmbh/widget-sdk
 
 SDK for building widgets that embed into [ivCampus](https://ivicos-campus.app) — inside a Room
 or the Personal Dashboard. A widget is any page you host at your own HTTPS URL; ivCampus embeds
@@ -19,32 +19,57 @@ This is an early, internal-only phase of the widget system. Concretely:
   data-access phase, but any call goes unanswered ("not available in this phase").
 - There is **no self-serve publishing**. Every widget goes through manual review before it's
   usable by anyone (see [Submitting your widget](#submitting-your-widget) below).
-- The SDK is **not published to a package registry** — see [Install](#install).
+- The SDK is published to **GitHub Packages**, not the public npm registry — see
+  [Install](#install).
 
 None of this is a bug to work around; build against what's actually there.
 
 ## Install
 
-Not published to npm. Consumed as a pinned git dependency:
+Published to [GitHub Packages](https://github.com/features/packages) (npm-compatible), not
+`registry.npmjs.org`. This means every consumer — public repo or not — needs a GitHub personal
+access token, not just a package name; there's no anonymous `npm install` for GitHub Packages'
+npm registry, even for public packages.
+
+1. Add this to your project's `.npmrc` (or `~/.npmrc`):
+
+   ```
+   @ivicos-gmbh:registry=https://npm.pkg.github.com
+   ```
+
+2. Generate a classic GitHub personal access token with the `read:packages` scope, then add it
+   to your `~/.npmrc` (don't commit a token to a project-level `.npmrc`):
+
+   ```
+   //npm.pkg.github.com/:_authToken=<your-token>
+   ```
+
+3. Install normally:
+
+   ```json
+   "@ivicos-gmbh/widget-sdk": "^0.1.0"
+   ```
+
+   Real semver ranges work here — this is a real registry, unlike a raw git-SHA pin.
+
+**Alternative: pinned git dependency.** If you'd rather not set up a GitHub Packages token, you
+can still consume this repo directly via git, pinned to a tag or commit SHA:
 
 ```json
-"@ivicos/widget-sdk": "git+ssh://git@github.com/ivicos-GmbH/widget-sdk.git#<commit-sha>"
+"@ivicos-gmbh/widget-sdk": "git+ssh://git@github.com/ivicos-GmbH/widget-sdk.git#<tag-or-sha>"
 ```
 
-Pin to a specific commit SHA, not a branch — there's no semver/tagging discipline on this repo
-yet, so `main` can change under you.
-
 The compiled `lib/` output is committed to this repo (not built on install), specifically so
-this works identically under npm, yarn, and pnpm — pnpm in particular blocks dependency
-lifecycle scripts (`prepare`/`postinstall`) by default as a supply-chain safeguard, which would
-otherwise silently skip a build-on-install step and leave you with a "module not found" error
-that has nothing obviously to do with pnpm. There's nothing to build here; the files are already
-there.
+this works identically under npm, yarn, and pnpm regardless of install method — pnpm in
+particular blocks dependency lifecycle scripts (`prepare`/`postinstall`) by default as a
+supply-chain safeguard, which would otherwise silently skip a build-on-install step and leave
+you with a "module not found" error that has nothing obviously to do with pnpm. There's nothing
+to build here; the files are already there.
 
 ## Quick start
 
 ```ts
-import { WidgetSDK } from '@ivicos/widget-sdk';
+import { WidgetSDK } from '@ivicos-gmbh/widget-sdk';
 
 const sdk = new WidgetSDK();
 

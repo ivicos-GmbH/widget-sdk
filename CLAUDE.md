@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`@ivicos/widget-sdk` is the client-side SDK that widget developers embed in their own page to
+`@ivicos-gmbh/widget-sdk` is the client-side SDK that widget developers embed in their own page to
 talk to the ivCampus host over `postMessage`, from inside the sandboxed iframe ivCampus puts
 them in. It is not an ivCampus-side package — it never talks to ivCampus's backend directly,
 only to the host page one level up via the `postMessage` protocol. The full external-developer
