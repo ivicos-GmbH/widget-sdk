@@ -13,12 +13,14 @@ how to build one, and how to get it live on a real ivCampus org.
 This is an early, internal-only phase of the widget system. Concretely:
 
 - Widgets are **display-only by default**. They always receive read-only display context (theme,
-  locale, which room/area/campus they're in, the viewer's display name and avatar) and a
-  presence push for the viewer's own status. A widget whose manifest declares a data-access
-  scope can additionally call `sdk.data.getRoom()` (common room info) and/or
-  `sdk.data.getPersonalRoom()` (the viewer's own personal room) — each requires the widget to
-  have been granted the matching scope at review time; an ungranted call rejects rather than
-  returning trimmed data. Widgets still cannot write anything back to ivCampus.
+  locale, which room/area/campus they're in, the viewer's display name, avatar, and coarse
+  presence status). A widget whose manifest declares a data-access scope can additionally call
+  `sdk.data.getRoom()` (common room info) and/or `sdk.data.getPersonalRoom()` (the viewer's own
+  personal room) — each requires the widget to have been granted the matching scope at review
+  time. Missing `room:read:basic` rejects the whole call; missing `room:read:members` (with
+  `room:read:basic` granted) still succeeds, just without `whitelist`/`creatorId` in the result —
+  see [Room data](#room-data) below for the exact behavior. Widgets still cannot write anything
+  back to ivCampus.
 - There is **no self-serve publishing**. Every widget goes through manual review before it's
   usable by anyone (see [Submitting your widget](#submitting-your-widget) below).
 - The SDK is published to **GitHub Packages**, not the public npm registry — see
@@ -49,7 +51,7 @@ npm registry, even for public packages.
 3. Install normally:
 
    ```json
-   "@ivicos-gmbh/widget-sdk": "^0.1.0"
+   "@ivicos-gmbh/widget-sdk": "^0.2.0"
    ```
 
    Real semver ranges work here — this is a real registry, unlike a raw git-SHA pin.
@@ -114,6 +116,7 @@ interface WidgetContext {
     roomId?: string;       // present when embedded inside a specific room (Room placement)
     displayName: string;   // the viewing user's display name
     avatar?: string;       // optional avatar image URL for the viewing user
+    status?: string;       // optional coarse presence status for the viewing user (e.g. "online", "away")
 }
 ```
 
@@ -122,36 +125,51 @@ kind, no access to any ivCampus API. If your widget needs a backend, it's **your
 the widget page talks to whatever server you control, using whatever auth model you build for
 it; ivCampus is not in that loop.
 
-### Presence
-
-The widget receives the viewing user's coarse presence status (online/away/do-not-disturb/etc.):
-
-```ts
-sdk.onPresenceChange((presence) => {
-    // presence.status is a string like "online", "away", etc.
-});
-
-// Or poll the most recently received status:
-const presence = sdk.getPresence(); // WidgetPresence | null
-```
+`status` (and `avatar`) update the same way the rest of the context does — via `onContextChange`
+pushes and `getContext()`/the resolved value of `init()` — there's no separate presence API.
 
 ### Room data
 
-If your widget's manifest declares `room:read` or `personalRoom:read` scopes, you can query:
+If your widget's manifest declares the `room:read:basic` scope, you can query:
 
 ```ts
-// Common room info (name, member count, optionally member list if scope `room:read:members` is granted)
+// Common room info
 const room = await sdk.data.getRoom();
 
 // The viewing user's own personal room
 const personalRoom = await sdk.data.getPersonalRoom();
 ```
 
-Both calls reject (rather than returning trimmed data) if the required scope hasn't been granted.
+`WidgetRoomInfo` looks like:
 
-**Note:** The DTO field names are provisional until campus-api's and identity-provider's Phase 4
-implementations ship — do not treat the current shape as final. The API surface will remain stable;
-internal field names may still change.
+```ts
+interface WidgetRoomInfo {
+    id: string;
+    name: string;
+    iconKey: string;
+    isPrivate: boolean;
+    isAudioOnly: boolean;
+    isOpenForVisitors: boolean;
+    whitelist?: string[] | null;  // only present with `room:read:members`
+    creatorId?: string;           // only present with `room:read:members`
+}
+```
+
+**Scope behavior is not uniform** — read this carefully before assuming a rejected call means
+your widget did something wrong:
+
+- Missing `room:read:basic` (the baseline scope `getRoom()` needs at all): the call **rejects**.
+- Missing `room:read:members` while `room:read:basic` is present: the call **succeeds**, just
+  with `whitelist`/`creatorId` omitted from the result rather than the request being rejected.
+
+Personal-room access (`getPersonalRoom()`) isn't gated by a scope string at all. It depends on
+whether the widget's token carries a resolvable reference to the viewing user (granted as part
+of the widget's session by the identity provider) — there is no `personalRoom:read` scope to
+declare in your manifest for it.
+
+**Note:** The DTO field names reflect campus-api's current implementation but may still evolve —
+don't treat the shape as permanently frozen. The API surface (the methods themselves) is expected
+to remain stable.
 
 ## Hosting requirements
 
@@ -210,9 +228,6 @@ window.addEventListener('message', (event) => {
     }
     if (msg.type === 'session-ending') {
         // the widget's session is ending; clean up and prepare for destruction
-    }
-    if (msg.type === 'presence') {
-        // msg.presence is the WidgetPresence object (e.g. { status: 'online' })
     }
 });
 ```

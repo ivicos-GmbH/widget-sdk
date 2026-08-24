@@ -61,11 +61,16 @@ and check `git status` for an accompanying `lib/` diff.
 The entire SDK is three files in `src/`:
 
 - `types.ts` — `WidgetContext` (the read-only data a widget receives: theme, locale, campusId,
-  optional areaId/roomId, displayName) and the two discriminated-union message types,
-  `HostToWidgetMessage` / `WidgetToHostMessage`, that define the wire protocol.
+  optional areaId/roomId, displayName, and the optional `avatar`/`status` fields), `WidgetRoomInfo`/
+  `WidgetPersonalRoomInfo` (the typed `sdk.data.*` RPC result shapes), and the two
+  discriminated-union message types, `HostToWidgetMessage` / `WidgetToHostMessage`, that define
+  the wire protocol — including the `session-ending` variant on `HostToWidgetMessage`. There is
+  no standalone presence message type: presence is just the `status` field on `context`, pushed
+  the same way `avatar`/`displayName` already are.
 - `sdk.ts` — the `WidgetSDK` class, the entire implementation.
-- `index.ts` — the public export surface (`WidgetSDK`, `SDK_VERSION`, and the `WidgetContext`/
-  `InitOptions` types). Nothing internal to `sdk.ts` should be exported here beyond this.
+- `index.ts` — the public export surface: `WidgetSDK`, `SDK_VERSION`, and the `WidgetContext`/
+  `InitOptions`/`WidgetRoomInfo`/`WidgetPersonalRoomInfo` types. Nothing internal to `sdk.ts`
+  should be exported here beyond this.
 
 Imports between these files use explicit `.js` extensions on `.ts` source (e.g.
 `from './types.js'`) — required by `moduleResolution: NodeNext` in tsconfig.json. Don't drop the
@@ -99,11 +104,15 @@ rationale in full.
 
 ### Current capability boundary
 
-`WidgetSDK.call()` and the `rpc-request`/`rpc-response` message types exist as forward-compatible
-transport, but per the README's "Status" section, no scoped data-access phase exists yet — any
-`call()` currently goes unanswered. Don't treat the presence of `call()` as evidence that widgets
-have any live data access; they don't. If asked to build against real RPC methods, check the
-current status in README.md first rather than assuming `call()` is wired up to anything.
+`WidgetSDK.call()`, the `rpc-request`/`rpc-response` message types, and the typed `sdk.data.getRoom()`/
+`sdk.data.getPersonalRoom()` wrappers all exist and are covered by `test/sdk.test.ts` against
+mocked RPC responses — the client-side plumbing for scoped data access is real and tested. What's
+still missing is the other end: campus-alpha-client (the actual host) doesn't answer these RPC
+requests for real yet, so against a real host `call()`/`sdk.data.*` currently go unanswered (or
+error) rather than resolving with live data — that's a separate repo's task. Don't treat the
+presence and test coverage of `sdk.data.*` as evidence that end-to-end data access works yet. If
+asked to build against real RPC methods, check the current status in README.md and in
+campus-alpha-client first rather than assuming the host side is wired up.
 
 ## Code style
 
