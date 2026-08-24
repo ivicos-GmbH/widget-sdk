@@ -12,11 +12,13 @@ how to build one, and how to get it live on a real ivCampus org.
 
 This is an early, internal-only phase of the widget system. Concretely:
 
-- Widgets are **display-only**. They receive read-only display context (theme, locale, which
-  room/area/campus they're in, the viewer's display name) and can render, resize, and react to
-  visibility changes. They **cannot** read or write any ivCampus data (rooms, messages, users,
-  files — nothing). `WidgetSDK.call()` exists as forward-compatible transport for a future scoped
-  data-access phase, but any call goes unanswered ("not available in this phase").
+- Widgets are **display-only by default**. They always receive read-only display context (theme,
+  locale, which room/area/campus they're in, the viewer's display name and avatar) and a
+  presence push for the viewer's own status. A widget whose manifest declares a data-access
+  scope can additionally call `sdk.data.getRoom()` (common room info) and/or
+  `sdk.data.getPersonalRoom()` (the viewer's own personal room) — each requires the widget to
+  have been granted the matching scope at review time; an ungranted call rejects rather than
+  returning trimmed data. Widgets still cannot write anything back to ivCampus.
 - There is **no self-serve publishing**. Every widget goes through manual review before it's
   usable by anyone (see [Submitting your widget](#submitting-your-widget) below).
 - The SDK is published to **GitHub Packages**, not the public npm registry — see
@@ -111,6 +113,7 @@ interface WidgetContext {
     areaId?: string;       // present when embedded inside a specific area
     roomId?: string;       // present when embedded inside a specific room (Room placement)
     displayName: string;   // the viewing user's display name
+    avatar?: string;       // optional avatar image URL for the viewing user
 }
 ```
 
@@ -118,6 +121,37 @@ That's the entire surface. No user ID, no email, no auth token, no bearer creden
 kind, no access to any ivCampus API. If your widget needs a backend, it's **your own backend** —
 the widget page talks to whatever server you control, using whatever auth model you build for
 it; ivCampus is not in that loop.
+
+### Presence
+
+The widget receives the viewing user's coarse presence status (online/away/do-not-disturb/etc.):
+
+```ts
+sdk.onPresenceChange((presence) => {
+    // presence.status is a string like "online", "away", etc.
+});
+
+// Or poll the most recently received status:
+const presence = sdk.getPresence(); // WidgetPresence | null
+```
+
+### Room data
+
+If your widget's manifest declares `room:read` or `personalRoom:read` scopes, you can query:
+
+```ts
+// Common room info (name, member count, optionally member list if scope `room:read:members` is granted)
+const room = await sdk.data.getRoom();
+
+// The viewing user's own personal room
+const personalRoom = await sdk.data.getPersonalRoom();
+```
+
+Both calls reject (rather than returning trimmed data) if the required scope hasn't been granted.
+
+**Note:** The DTO field names are provisional until campus-api's and identity-provider's Phase 4
+implementations ship — do not treat the current shape as final. The API surface will remain stable;
+internal field names may still change.
 
 ## Hosting requirements
 
@@ -173,6 +207,12 @@ window.addEventListener('message', (event) => {
     }
     if (msg.type === 'visibility-change') {
         // msg.visible: boolean
+    }
+    if (msg.type === 'session-ending') {
+        // the widget's session is ending; clean up and prepare for destruction
+    }
+    if (msg.type === 'presence') {
+        // msg.presence is the WidgetPresence object (e.g. { status: 'online' })
     }
 });
 ```
