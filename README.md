@@ -217,7 +217,7 @@ Test your widget against a real host before submitting, rather than debugging bl
 ```bash
 yarn install
 yarn build   # tsc -> lib/ (real ESM output - see git history if this ever regresses to CJS)
-yarn test    # tsc --noEmit + eslint + vitest
+yarn test    # type-checks + lints src/ and test/, then runs the Vitest suite
 ```
 
 `lib/` is committed (see [Install](#install) for why), which means it does **not** regenerate
