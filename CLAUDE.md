@@ -106,13 +106,13 @@ rationale in full.
 
 `WidgetSDK.call()`, the `rpc-request`/`rpc-response` message types, and the typed `sdk.data.getRoom()`/
 `sdk.data.getPersonalRoom()` wrappers all exist and are covered by `test/sdk.test.ts` against
-mocked RPC responses — the client-side plumbing for scoped data access is real and tested. What's
-still missing is the other end: campus-alpha-client (the actual host) doesn't answer these RPC
-requests for real yet, so against a real host `call()`/`sdk.data.*` currently go unanswered (or
-error) rather than resolving with live data — that's a separate repo's task. Don't treat the
-presence and test coverage of `sdk.data.*` as evidence that end-to-end data access works yet. If
-asked to build against real RPC methods, check the current status in README.md and in
-campus-alpha-client first rather than assuming the host side is wired up.
+mocked RPC responses — the client-side plumbing for scoped data access is real and tested.
+campus-alpha-client (the actual host) now answers these RPC requests for real: `WidgetHost.state.tsx`
+routes `room.get` to `resourceService.getWidgetRoom` (campus-api's `GET widget-api/:widgetId/room`)
+and `personalRoom.get` to `idpService.getWidgetPersonalRoom` (identity-provider's personal-room
+route, unwrapped/renamed to match `WidgetPersonalRoomInfo`). If asked to build against real RPC
+methods, the end-to-end chain is wired — verify the current shape in campus-alpha-client first
+rather than assuming this doc is still accurate, since it can drift again.
 
 ## Code style
 
