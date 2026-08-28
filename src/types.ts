@@ -10,7 +10,11 @@ export interface WidgetContext {
     displayName: string;
     /** Optional avatar image URL for the viewing user. Absent if they have none set. */
     avatar?: string;
-    /** Coarse presence status for the viewing user (e.g. "online", "away"). Absent if unknown. */
+    /**
+     * Coarse presence status for the viewing user - one of 'available', 'away', 'busy',
+     * 'out-of-office' or 'on-the-phone'. Typed as a plain string so the host can add values
+     * without a breaking SDK change. Absent if unknown.
+     */
     status?: string;
     /**
      * The room this widget is placed in. Absent only if the host has no room in scope yet - every

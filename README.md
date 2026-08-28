@@ -22,8 +22,14 @@ Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konk
   Sprache, Campus/Bereich, den Raum inklusive Name und Typ, den Anzeigenamen der betrachtenden Person, Avatar
   und groben Präsenzstatus) — und sonst nichts. Es gibt keine Daten-API, kein Token und keine Scopes: Alles,
   was ein Widget über ivCampus weiß, steht im Kontext. Widgets können auch nichts zurück an ivCampus schreiben.
+  Nichts davon erfordert eine Berechtigung, einen Scope oder eine Zustimmungsabfrage: Jedes
+  freigegebene Widget erhält exakt dieselben Felder. Wie du sie ausliest, zeigt
+  [Den Kontext nutzen](#den-kontext-nutzen).
 - Es gibt **kein Self-Service-Publishing**. Jedes Widget durchläuft eine manuelle Prüfung, bevor es für
   irgendjemanden nutzbar ist (siehe [Dein Widget einreichen](#dein-widget-einreichen) weiter unten).
+- **Eine Freigabe ist nicht endgültig.** Ein freigegebenes Widget kann nachträglich gesperrt werden;
+  es wird dann überall dort nicht mehr gerendert, wo es aktiviert war. Behandle das Verschwinden als
+  normalen Zustand, nicht als Absturz.
 - Das SDK wird über **GitHub Packages** veröffentlicht, nicht über die öffentliche npm-Registry — siehe
   [Installation](#installation).
 
@@ -113,6 +119,9 @@ gibt es nichts zu bauen; die Dateien sind bereits vorhanden.
 
 ### Schnellstart
 
+Lauffähige Beispiele liegen in [`examples/`](examples) — darunter ein komplettes Widget in einer
+einzigen HTML-Datei ohne Build-Schritt.
+
 ```ts
 import { WidgetSDK } from '@ivicos-gmbh/widget-sdk';
 
@@ -156,7 +165,7 @@ interface WidgetContext {
     areaId?: string;       // vorhanden, wenn in einem bestimmten Bereich eingebettet
     displayName: string;   // Anzeigename der betrachtenden Person
     avatar?: string;       // optionale Avatar-Bild-URL der betrachtenden Person
-    status?: string;       // optionaler grober Präsenzstatus der betrachtenden Person (z. B. "online", "away")
+    status?: string;       // Präsenz: 'available' | 'away' | 'busy' | 'out-of-office' | 'on-the-phone'
     room?: {               // der Raum, in dem das Widget platziert ist
         id: string;
         name: string;
@@ -178,9 +187,118 @@ entweder im eigenen persönlichen Raum der betrachtenden Person (`type: 'persona
 Raum (`type: 'common'`). Wechselt die Person den Raum, kommt der neue `room`-Wert über `onContextChange`; ein
 gesonderter Abruf ist nicht nötig und auch nicht möglich.
 
+### Den Kontext nutzen
+
+Alles Folgende erfordert **keine Berechtigung, keine Zustimmungsabfrage und keinen Scope**. Es gibt
+nichts zu beantragen und keine API aufzurufen: Der Host pusht diese Felder an jedes freigegebene
+Widget, für alle identisch, und `init()` reicht sie dir durch. Was nicht am `WidgetContext` steht,
+kann kein Widget bekommen.
+
+**Die betrachtende Person.**
+
+```ts
+const context = await sdk.init({ widgetId: 'my-widget' });
+
+context.displayName;  // "Jane Doe" - kann leer sein, solange der Host ihn noch auflöst
+context.avatar;       // "https://.../avatar.png", oder undefined, wenn kein Bild gesetzt ist
+context.status;       // 'available' | 'away' | 'busy' | 'out-of-office' | 'on-the-phone', oder undefined
+```
+
+**Es gibt keine User-ID.** `displayName` ist eine Beschriftung, kein Identifier: nicht eindeutig,
+nicht stabil, und zwei Personen im selben Raum können denselben tragen. Nutze ihn niemals als
+Schlüssel für Speicherung, Analytics oder irgendetwas, das eine Person über Sessions hinweg
+wiedererkennen muss. Braucht dein Widget eine belastbare Identität, muss es diese selbst gegenüber
+deinem eigenen Backend herstellen — ivCampus liefert keine.
+
+**Der Raum.**
+
+```ts
+if (!context.room) {
+    // Der Host hat noch keinen Raum im Zugriff. Selten - zeige einen neutralen Zustand statt abzustürzen.
+    return;
+}
+
+context.room.id;    // stabiler Identifier dieses Raums - als Storage-Key geeignet
+context.room.name;  // Anzeigename, z. B. "Team Standup". Fällt vor dem Laden auf die id zurück.
+context.room.type;  // 'personal' | 'common'
+```
+
+`room.id` *ist* stabil — ein raumbezogenes Widget (Notizzettel, Umfrage, Warteschlange) kann seine
+eigene Backend-Speicherung darauf schlüsseln. `room.type` sagt dir, in welcher Art von Raum du bist:
+`'personal'` ist der eigene private Raum der betrachtenden Person — ein Widget auf dem persönlichen
+Dashboard sieht immer diesen Wert — und `'common'` ein gemeinsamer Raum, den andere betreten können.
+Entscheide damit, ob das Anzeigen persönlicher Inhalte angemessen ist:
+
+```ts
+if (context.room) {
+    const isPrivate = context.room.type === 'personal';
+    render(isPrivate ? myPrivateNotes() : sharedAgenda(context.room.id));
+}
+```
+
+**Auf Änderungen reagieren.** Der gesamte Kontext wird erneut gepusht, sobald sich irgendein Teil
+davon ändert — am häufigsten, weil die Person in einen anderen Raum gewechselt ist. Es gibt keinen
+Aufruf zum Neuladen; abonniere stattdessen und behandle den Callback als einzige Quelle der Wahrheit:
+
+```ts
+let currentRoomId: string | undefined = context.room?.id;
+
+const unsubscribe = sdk.onContextChange((next) => {
+    if (next.room?.id !== currentRoomId) {
+        currentRoomId = next.room?.id;
+        loadDataFor(currentRoomId);   // Raumwechsel - neu laden
+    }
+});
+```
+
+Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn deine View verschwindet.
+
+**Zwei Einschränkungen, die du kennen solltest, bevor du darauf aufbaust:**
+
+- `theme` ist als `'light' | 'dark'` typisiert, der Host sendet aktuell aber immer `'light'` —
+  ivCampus hat noch keinen Dark Mode. Lies das Feld trotzdem aus, statt hart zu kodieren, damit dein
+  Widget mitzieht, sobald sich das ändert; der Dark-Pfad lässt sich heute allerdings nicht testen.
+- `campusId` und `areaId` identifizieren die Organisation und den Bereich, in dem das Widget
+  eingebettet ist. Es sind opake Strings, brauchbar als Scoping-Schlüssel für deine eigene
+  Speicherung — mehr nicht; es gibt keine ivCampus-API, an die du sie übergeben könntest.
+
+### API-Referenz
+
+`new WidgetSDK()` — einmal pro Seite konstruieren. Alles Folgende ist eine Methode auf dieser Instanz.
+
+| Methode | Rückgabe | Hinweise |
+|---|---|---|
+| `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt nach 10 s ab, wenn der Host nie antwortet. Ein zweiter Aufruf wirft. |
+| `getContext()` | `WidgetContext \| null` | Der zuletzt empfangene Kontext. `null`, bis `init()` sich auflöst — nimm bevorzugt den Wert aus `init()`. |
+| `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
+| `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
+| `onSessionEnding(fn)` | `() => void` | Ruft `fn()` kurz bevor das Widget abgebaut wird. Die letzte Gelegenheit, ungesicherten Zustand zu schreiben. Gibt eine Unsubscribe-Funktion zurück. |
+| `reportResize(height)` | `void` | Meldet die Inhaltshöhe in Pixeln manuell. Meist unnötig — siehe unten. Wiederholte Aufrufe mit derselben Höhe werden ignoriert. |
+| `destroy()` | `void` | Entfernt den Message-Listener, trennt den ResizeObserver und verwirft alle Listener. Aufrufen, wenn deine Seite das Widget ohne vollen Reload abbaut (etwa bei einem SPA-Routenwechsel). |
+
+Ebenfalls aus dem Paket exportiert: `SDK_VERSION` (die Protokollversion dieses Builds) sowie die
+Typen `WidgetContext` und `InitOptions`.
+
+**Zum Resizing.** `init()` startet einen `ResizeObserver` auf `document.body` und meldet die Höhe
+automatisch — die meisten Widgets rufen `reportResize()` nie auf. Nutze es nur zum Überschreiben:
+für eine bewusst fixe Höhe, oder wenn dein eigentlicher Inhalt in einem absolut positionierten
+Element liegt, das `document.body` nicht mitmisst.
+
+**Ein fehlgeschlagenes `init()` behandeln.** `init()` lehnt ab, statt endlos zu hängen — fange das ab:
+
+```ts
+try {
+    const context = await sdk.init({ widgetId: 'my-widget' });
+    render(context);
+} catch (err) {
+    // Fast immer eine abweichende widgetId, oder die Seite wurde direkt statt eingebettet geöffnet.
+    document.body.textContent = 'Diese Seite läuft als ivCampus-Widget.';
+}
+```
+
 ### Hosting-Anforderungen
 
-Jede HTTPS-URL, die du kontrollierst, funktioniert, mit zwei harten Anforderungen:
+Jede HTTPS-URL, die du kontrollierst, funktioniert, mit drei harten Anforderungen:
 
 1. **HTTPS, keine Ausnahmen.** Reine `http://`-URLs werden bei der Registrierung abgelehnt.
 2. **Deine Seite muss das Einbetten in einen Frame erlauben.** Sendet dein Host eine restriktive
@@ -193,8 +311,60 @@ Jede HTTPS-URL, die du kontrollierst, funktioniert, mit zwei harten Anforderunge
    Ist eine der beiden vorhanden und restriktiv, musst du sie für das Einbetten lockern. Die meisten
    einfachen statischen Hoster (GitHub Pages, Vercel, Netlify, S3, dein eigenes nginx ohne
    Zusatzkonfiguration) setzen diese standardmäßig nicht und funktionieren out of the box.
+3. **Deine Origin wird bei der Freigabe festgeschrieben.** Die Origin, die du registrierst, wird
+   beim Build von ivCampus in dessen eigenen `Content-Security-Policy: frame-src`-Header
+   kompiliert. Eine Origin, die dort nicht steht, wird nicht gerendert — unabhängig davon, was in
+   der Registry steht. Dein Widget später auf eine *andere* Origin umzuziehen, erfordert deshalb
+   einen neuen ivCampus-Build und nicht nur eine Änderung am Manifest: Behandle deine Origin als
+   langlebig und stimme jede Änderung mit [support@ivicos.eu](mailto:support@ivicos.eu) ab. Den
+   Pfad innerhalb derselben Origin zu ändern, ist dagegen kostenlos.
 
 Kein bestimmter Hosting-Anbieter ist erforderlich oder bevorzugt — nimm, was du bereits nutzt.
+Eingebettet zu sein ändert außerdem, was deine Seite speichern und wie sie sich authentifizieren
+kann — siehe [Cross-Origin-Einschränkungen](#cross-origin-einschränkungen).
+
+### Cross-Origin-Einschränkungen
+
+Dein Widget wird von deiner Origin ausgeliefert und in eine Seite eingebettet, die von der Origin
+von ivCampus kommt — beide sind also immer cross-origin. **Das ist keine CORS-Frage.** Ob ein
+Dokument in ein Iframe geladen werden darf, regeln die Framing-Regeln oben —
+`frame-ancestors`/`X-Frame-Options` auf deiner Seite, `frame-src` auf der von ivCampus. Ein
+`Access-Control-Allow-Origin`-Header auf deiner Widget-URL wird weder benötigt noch überhaupt
+ausgewertet. (CORS gilt sehr wohl für `fetch()`-Aufrufe, die dein Widget an *dein eigenes* Backend
+richtet, falls dieses auf einer anderen Origin liegt als die Widget-Seite. Das ist eine Sache
+zwischen dir und deinem Server; ivCampus ist daran nicht beteiligt.)
+
+Was Cross-Origin tatsächlich ändert, sind Speicherung und Authentifizierung.
+
+**Deine Cookies sind Third-Party-Cookies.** Safari blockiert Cross-Site-Cookies vollständig; Firefox
+und Chrome partitionieren sie nach Top-Level-Site. Ein Session-Cookie, das dein Backend setzt,
+funktioniert einwandfrei, wenn du die URL deines Widgets direkt öffnest — und dann stillschweigend
+nicht mehr, sobald dieselbe Seite innerhalb von ivCampus läuft. Das ist die häufigste Art, wie ein
+Widget, das „in der Entwicklung lief“, im eingebetteten Zustand scheitert. Jedes Cookie, auf das du
+angewiesen bist, muss mindestens `SameSite=None; Secure` sein — und selbst dann solltest du nicht
+darauf zählen, dass Safari es mitsendet.
+
+**`localStorage`, `sessionStorage` und IndexedDB sind partitioniert**, geschlüsselt nach
+Top-Level-Site. Dein Widget bekommt durchaus echten Speicher — der Host gewährt `allow-same-origin`,
+deine Seite behält also ihre eigene Origin statt einer opaken — aber es ist ein *separater Bucket*
+als der, den dieselbe Seite nutzt, wenn jemand deine Website direkt besucht. Zustand wird nicht
+übernommen, und dauerhaft ist er auch nicht.
+
+**Die Storage Access API ist kein Ausweg.** Die Sandbox des Hosts enthält
+`allow-storage-access-by-user-activation` nicht, `document.requestStorageAccess()` steht Widgets
+also nicht zur Verfügung. Entwirf für partitionierten Speicher, statt dich herausbitten zu wollen.
+
+**Ein interaktiver Login im Widget ist bewusst schwierig.** `allow-popups` wird nicht gewährt,
+`window.open` ist also blockiert; `allow-top-navigation` ebenso wenig, du kannst die übergeordnete
+Seite also nicht umleiten. Bleibt die Umleitung *innerhalb deines eigenen Iframes* — die
+funktioniert, aber die meisten Identity-Provider (darunter Google und Microsoft) verweigern das
+Framing grundsätzlich, sodass ein klassischer OAuth-Redirect zu ihnen schlicht nicht rendert.
+
+**Was du stattdessen tun solltest.** Bevorzuge ein Auth-Modell, das ohne interaktiven Login im Frame
+auskommt: Halte Zugangsdaten für die Lebensdauer des Widgets im Speicher und stelle sie bei jedem
+Laden neu her; behandle jedes Laden als Kaltstart. Denk daran, dass ivCampus dir keine
+Nutzeridentität liefert, auf der du aufbauen könntest ([Den Kontext nutzen](#den-kontext-nutzen)) —
+brauchst du eine belastbare, muss dein eigenes Backend dieses Problem außerhalb des Widgets lösen.
 
 ### Das Protokoll, falls du dieses SDK nicht verwendest
 
@@ -205,7 +375,7 @@ Box. Die vollständigen Message-Formen:
 **Beim Laden senden:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 1 },
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // oder SDK_VERSION importieren
     '*' // hier unvermeidbar - du kennst die Origin des Hosts noch nicht, und diese Nachricht enthält keine Geheimnisse
 );
 ```
@@ -251,27 +421,38 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
 
 ### Dein Widget einreichen
 
-1. Jemand mit der Rolle Manager oder Owner in einer ivCampus-Organisation (die **sponsernde Organisation** —
-   die Verantwortlichkeit für dein Widget führt auf sie zurück) öffnet **Org Settings → Integrations → Submit
-   a widget** und füllt aus:
+1. Jemand mit der Rolle Manager oder Owner in einer ivCampus-Organisation (die **sponsernde
+   Organisation** — die Verantwortlichkeit für dein Widget führt auf sie zurück) öffnet
+   **Campus-Einstellungen → Externe Widgets → Widget einreichen** und füllt aus:
 
    | Feld | Einschränkung |
    |---|---|
-   | Widget ID | nur Kleinbuchstaben/Zahlen/Bindestriche, muss über die gesamte Registry eindeutig sein |
+   | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
    | Name | Freitext, nur zur Anzeige |
    | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) — wird aktuell gegen nichts geprüft, braucht nur diese Form |
-   | Widget URL | deine HTTPS-Iframe-URL |
-   | Icon URL | jede erreichbare URL, wird nicht als tatsächliches Bild validiert |
-   | Description | Freitext |
-   | Placement | Room, Personal Dashboard oder beides |
+   | Widget-URL | deine HTTPS-Iframe-URL |
+   | Icon-URL | jede erreichbare URL, wird nicht als tatsächliches Bild validiert |
+   | Beschreibung | Freitext |
+   | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
 
-2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar (als "pending review") und für
-   niemanden sonst — es kann von niemandem aktiviert oder genutzt werden, bevor es geprüft wurde.
-3. Es gibt aktuell keinen Self-Service- oder automatischen Freigabeschritt. Jemand auf ivCampus-Seite prüft
-   und aktiviert das Widget manuell; dafür gibt es noch kein Dashboard oder Benachrichtigung, also frag
-   direkt nach, wenn du darauf wartest.
-4. Nach der Freigabe kann die sponsernde Organisation es über denselben Integrations-Screen aktivieren, und
-   es wird in dem/den Placement(s) nutzbar, für die du es registriert hast.
+2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
+   kann von niemandem aktiviert oder genutzt werden, bevor sie geprüft wurde.
+
+3. Verfolge sie auf demselben Screen unter **Deine Einreichungen**, wo der aktuelle Status steht:
+
+   | Status | Bedeutung |
+   |---|---|
+   | Ausstehende Überprüfung | eingereicht, wartet auf ivCampus |
+   | Freigegeben | live — die sponsernde Organisation kann es in den registrierten Placements aktivieren |
+   | Gesperrt | zuvor freigegeben, inzwischen zurückgezogen; es wird für niemanden mehr gerendert |
+
+   Die Prüfung erfolgt manuell, und eine Statusänderung löst keine Benachrichtigung aus — sieh also
+   auf diesem Screen nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu) nach, wenn du
+   schon länger wartest.
+
+4. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
+   Icon, Beschreibung, Placements) oder ganz zurückziehen. Die Ausnahme ist die Widget-ID: Sie liegt
+   fest, und eine andere ID ist ein anderes Widget.
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
@@ -281,6 +462,11 @@ generischen "this widget did not respond"-Meldung ohne weitere Details, woran es
 Art, wie ein korrekt gebautes Widget kaputt erscheint.
 
 ### Lokale Entwicklung
+
+Der schnellste Start ist [`examples/hello-widget`](examples/hello-widget) — ein vollständiges
+Widget in einer einzigen HTML-Datei, ohne Build-Schritt und ohne Abhängigkeiten. Hoste es,
+registriere es, und du siehst die ganze Schleife laufen. `examples/sdk-widget` zeigt dasselbe
+über dieses SDK. Details in [examples/README.md](examples/README.md).
 
 Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind zu debuggen:
 
@@ -336,8 +522,12 @@ This is an early phase of the widget system, with real constraints. Concretely:
   the room they're in including its name and type, the viewer's display name, avatar, and coarse
   presence status) — and nothing else. There is no data API, no token and no scopes: everything a
   widget knows about ivCampus is in the context. Widgets also cannot write anything back to ivCampus.
+  None of it requires a permission, a scope or a consent prompt: every approved widget receives
+  exactly the same fields. See [Using the context](#using-the-context) for how to read them.
 - There is **no self-serve publishing**. Every widget goes through manual review before it's
   usable by anyone (see [Submitting your widget](#submitting-your-widget) below).
+- **Approval is not permanent.** An approved widget can be suspended afterwards, which stops it
+  rendering everywhere it was enabled. Treat disappearing as a normal state, not a crash.
 - The SDK is published to **GitHub Packages**, not the public npm registry — see
   [Install](#install).
 
@@ -427,6 +617,9 @@ to build here; the files are already there.
 
 ### Quick start
 
+Runnable examples live in [`examples/`](examples), including a complete widget in a single HTML
+file with no build step.
+
 ```ts
 import { WidgetSDK } from '@ivicos-gmbh/widget-sdk';
 
@@ -470,7 +663,7 @@ interface WidgetContext {
     areaId?: string;       // present when embedded inside a specific area
     displayName: string;   // the viewing user's display name
     avatar?: string;       // optional avatar image URL for the viewing user
-    status?: string;       // optional coarse presence status for the viewing user (e.g. "online", "away")
+    status?: string;       // presence: 'available' | 'away' | 'busy' | 'out-of-office' | 'on-the-phone'
     room?: {               // the room this widget is placed in
         id: string;
         name: string;
@@ -492,9 +685,115 @@ either the viewing user's own personal room (`type: 'personal'`) or a shared one
 (`type: 'common'`). When the user moves between rooms, the new `room` value arrives via
 `onContextChange`; there is no separate call to fetch it, and no way to ask for more than this.
 
+### Using the context
+
+Everything below needs **no permission, no consent prompt and no scope**. There is nothing to
+request and no API to call: the host pushes these fields to every approved widget, identically, and
+`init()` hands them to you. If a field is not on `WidgetContext`, no widget can get it.
+
+**The viewing user.**
+
+```ts
+const context = await sdk.init({ widgetId: 'my-widget' });
+
+context.displayName;  // "Jane Doe" - can be an empty string while the host is still resolving it
+context.avatar;       // "https://.../avatar.png", or undefined if they have no picture set
+context.status;       // 'available' | 'away' | 'busy' | 'out-of-office' | 'on-the-phone', or undefined
+```
+
+**There is no user ID.** `displayName` is a label, not an identifier: it is not unique, not stable,
+and two people in the same room can share one. Never use it as a key for storage, analytics, or
+anything that has to recognise a person across sessions. If your widget needs a verifiable identity,
+it has to establish that itself against your own backend — ivCampus does not provide one.
+
+**The room.**
+
+```ts
+if (!context.room) {
+    // The host has no room in scope yet. Rare, but render a neutral state rather than crashing.
+    return;
+}
+
+context.room.id;    // stable identifier for this room - safe to use as a storage key
+context.room.name;  // display name, e.g. "Team Standup". Falls back to the id before it loads.
+context.room.type;  // 'personal' | 'common'
+```
+
+`room.id` *is* stable, so a per-room widget (a scratchpad, a poll, a queue) can key its own backend
+storage on it. `room.type` tells you what kind of space you are in: `'personal'` is the viewer's own
+private room — a widget placed on the Personal Dashboard always sees this — and `'common'` is a
+shared room others can walk into. Use it to decide whether showing personal content is appropriate:
+
+```ts
+if (context.room) {
+    const isPrivate = context.room.type === 'personal';
+    render(isPrivate ? myPrivateNotes() : sharedAgenda(context.room.id));
+}
+```
+
+**Reacting to change.** The whole context is re-pushed whenever any part of it changes — most often
+because the user walked into a different room. There is no call to re-fetch it; subscribe instead,
+and treat the callback as your single source of truth:
+
+```ts
+let currentRoomId: string | undefined = context.room?.id;
+
+const unsubscribe = sdk.onContextChange((next) => {
+    if (next.room?.id !== currentRoomId) {
+        currentRoomId = next.room?.id;
+        loadDataFor(currentRoomId);   // the user moved rooms - reload
+    }
+});
+```
+
+Every `on*` method returns an unsubscribe function; call it when your view goes away.
+
+**Two caveats worth knowing before you design around them:**
+
+- `theme` is typed `'light' | 'dark'`, but the host currently always sends `'light'` — ivCampus has
+  no dark mode yet. Read the field rather than hardcoding, so your widget follows along when that
+  changes, but don't expect to be able to exercise the dark path today.
+- `campusId` and `areaId` identify the organisation and the area the widget is embedded in. They are
+  opaque strings, useful as scoping keys for your own storage, and nothing more — there is no
+  ivCampus API you can pass them to.
+
+### API reference
+
+`new WidgetSDK()` — construct once per page. Everything below is a method on that instance.
+
+| Method | Returns | Notes |
+|---|---|---|
+| `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects after 10s if the host never answers. Calling it twice throws. |
+| `getContext()` | `WidgetContext \| null` | The most recently received context. `null` until `init()` resolves — prefer the value `init()` gives you. |
+| `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
+| `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
+| `onSessionEnding(fn)` | `() => void` | Calls `fn()` shortly before the widget is torn down. Your last chance to flush unsaved state. Returns an unsubscribe function. |
+| `reportResize(height)` | `void` | Manually report content height in pixels. Usually unnecessary — see below. Repeated calls with the same height are ignored. |
+| `destroy()` | `void` | Removes the message listener, disconnects the resize observer, drops all listeners. Call it if your page tears the widget down without a full reload (an SPA route change, for instance). |
+
+Also exported from the package: `SDK_VERSION` (the protocol version this build speaks) and the
+`WidgetContext` / `InitOptions` types.
+
+**About resizing.** `init()` starts a `ResizeObserver` on `document.body` and reports height
+automatically, so most widgets never call `reportResize()` at all. Call it only to override that —
+for a deliberately fixed height, or when your real content sits in an absolutely-positioned element
+that `document.body` doesn't measure.
+
+**Handling a failed init.** `init()` rejects rather than hanging forever, so wrap it:
+
+```ts
+try {
+    const context = await sdk.init({ widgetId: 'my-widget' });
+    render(context);
+} catch (err) {
+    // Almost always a widgetId mismatch, or the page opened directly instead of embedded.
+    document.body.textContent = 'This page runs as an ivCampus widget.';
+}
+```
+
 ### Hosting requirements
 
-Any HTTPS URL you control works, with two hard requirements:
+Any HTTPS URL you control works, with three hard requirements:
 
 1. **HTTPS, no exceptions.** Plain `http://` URLs are rejected at registration time.
 2. **Your page must allow being framed.** If your host sends a restrictive
@@ -507,8 +806,56 @@ Any HTTPS URL you control works, with two hard requirements:
    If either is present and restrictive, you'll need to relax it for embedding to work. Most
    plain static hosts (GitHub Pages, Vercel, Netlify, S3, your own nginx with no extra config)
    don't set these by default and work fine out of the box.
+3. **Your origin is pinned at approval time.** The origin you register is compiled into
+   ivCampus's own `Content-Security-Policy: frame-src` when the platform is built, so an
+   origin that isn't on that list will not render no matter what the registry says. Moving
+   your widget to a *different* origin after approval therefore needs an ivCampus rebuild,
+   not just a manifest edit — treat your origin as long-lived, and coordinate any change with
+   [support@ivicos.eu](mailto:support@ivicos.eu). Changing the path on the same origin is free.
 
-No specific hosting provider is required or preferred — pick whatever you already use.
+No specific hosting provider is required or preferred — pick whatever you already use. Being embedded
+also changes what your page can store and how it can authenticate — see
+[Cross-origin constraints](#cross-origin-constraints).
+
+### Cross-origin constraints
+
+Your widget is served from your origin and embedded in a page served from ivCampus's, so the two are
+always cross-origin. **This is not a CORS question.** Loading a document into an iframe is governed
+by the framing rules above — `frame-ancestors`/`X-Frame-Options` on your side, `frame-src` on
+ivCampus's — and no `Access-Control-Allow-Origin` header on your widget URL is needed or even looked
+at. (CORS does apply to `fetch()` calls your widget makes to *your own* backend, if that backend
+sits on a different origin than the widget page. That's between you and your server; ivCampus isn't
+involved.)
+
+What being cross-origin actually changes is storage and authentication.
+
+**Your cookies are third-party cookies.** Safari blocks cross-site cookies outright; Firefox and
+Chrome partition them by top-level site. A session cookie your backend sets works perfectly when you
+open your widget's URL directly, and then silently doesn't when the identical page runs inside
+ivCampus. This is the most common way a widget that "worked in development" fails once embedded. Any
+cookie you depend on must at minimum be `SameSite=None; Secure` — and even then, don't count on
+Safari sending it.
+
+**`localStorage`, `sessionStorage` and IndexedDB are partitioned** by top-level site. Your widget
+does get real storage — the host grants `allow-same-origin`, so your page keeps its own origin
+rather than an opaque one — but it is a *separate bucket* from the one the same page uses when
+someone visits your site directly. State does not carry across, and it isn't durable.
+
+**The Storage Access API is not an escape hatch.** The host's sandbox does not include
+`allow-storage-access-by-user-activation`, so `document.requestStorageAccess()` is unavailable to
+widgets. Design for partitioned storage rather than planning to request your way out of it.
+
+**Interactive login inside a widget is hard, by design.** `allow-popups` is not granted, so
+`window.open` is blocked; `allow-top-navigation` is not granted either, so you can't redirect the
+parent page. That leaves redirecting *within your own iframe*, which does work — but most identity
+providers (Google and Microsoft among them) refuse to be framed at all, so a standard OAuth redirect
+to them simply won't render.
+
+**What to do instead.** Prefer an auth model that needs no interactive login in the frame: hold
+credentials in memory for the widget's lifetime and re-establish them on each load, and treat every
+load as a cold start. Remember that ivCampus gives you no user identity to build on
+([Using the context](#using-the-context)) — if you need a verifiable one, that is a problem your own
+backend has to solve outside the widget.
 
 ### The protocol, if you're not using this SDK
 
@@ -519,7 +866,7 @@ message shapes:
 **On load, send:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 1 },
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // or import SDK_VERSION
     '*' // unavoidable here - you don't know the host's origin yet, and this message carries no secrets
 );
 ```
@@ -565,26 +912,36 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 ### Submitting your widget
 
 1. Someone with a Manager or Owner role on an ivCampus org (the **sponsoring org** — your
-   widget's accountability traces back to them) opens **Org Settings → Integrations → Submit a
-   widget** and fills in:
+   widget's accountability traces back to them) opens **Campus Settings → External widgets →
+   Submit a widget** and fills in:
 
    | Field | Constraint |
    |---|---|
-   | Widget ID | lowercase letters/numbers/hyphens only, must be unique across the whole registry |
+   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
    | Name | free text, purely for display |
    | Version | must look like `X.Y.Z` (e.g. `1.0.0`) — not currently checked against anything, just needs the shape |
    | Widget URL | your HTTPS iframe URL |
    | Icon URL | any reachable URL, not validated as an actual image |
    | Description | free text |
-   | Placement | Room, Personal Dashboard, or both |
+   | Placement | Room, Personal dashboard, or both — at least one is required |
 
-2. The submission is immediately visible to the sponsoring org (as "pending review") and to no
-   one else — it can't be enabled or used by anyone until it's reviewed.
-3. There is currently no self-serve or automatic approval step. Someone on the ivCampus side
-   reviews and enables the widget manually; there's no dashboard or notification for this yet,
-   so follow up directly if you're waiting on one.
-4. Once approved, the sponsoring org can enable it via the same Integrations screen, and it
-   becomes usable in the placement(s) you registered it for.
+2. The submission is immediately visible to the sponsoring org and to no one else. It can't be
+   enabled or used by anyone until it has been reviewed.
+
+3. Track it under **Your submissions** on that same screen, which shows its current status:
+
+   | Status | What it means |
+   |---|---|
+   | Pending review | submitted, waiting on ivCampus |
+   | Approved | live — the sponsoring org can enable it in the placements you registered for |
+   | Suspended | previously approved, since withdrawn; it stops rendering for everyone |
+
+   Review is manual and nothing notifies you when the status changes, so check this screen — or ask
+   at [support@ivicos.eu](mailto:support@ivicos.eu) if you have been waiting.
+
+4. The sponsoring org can update its own submission afterwards (name, version, URL, icon,
+   description, placements) or withdraw it entirely. The Widget ID is the exception: it is fixed,
+   and a different ID is a different widget.
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
@@ -594,6 +951,11 @@ the widget will simply sit there failing to load, timing out after 10 seconds wi
 common way a correctly-built widget appears broken.
 
 ### Local development
+
+The fastest start is [`examples/hello-widget`](examples/hello-widget) — a complete widget in a
+single HTML file, no build step and no dependencies. Host it, register it, and you can watch the
+whole loop work. `examples/sdk-widget` does the same thing through this SDK. See
+[examples/README.md](examples/README.md) for both.
 
 Test your widget against a real host before submitting, rather than debugging blind:
 

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Hello Widget — ivCampus</title>
+        <style>
+            :root {
+                --bg: #ffffff;
+                --fg: #1b1b1f;
+                --muted: #6b6b76;
+                --line: #e4e4e9;
+                --accent: #3d5afe;
+            }
+            [data-theme='dark'] {
+                --bg: #1b1b1f;
+                --fg: #f2f2f5;
+                --muted: #a0a0ac;
+                --line: #35353d;
+                --accent: #8c9eff;
+            }
+            body {
+                margin: 0;
+                padding: 16px;
+                background: var(--bg);
+                color: var(--fg);
+                font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            .row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .avatar {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                object-fit: cover;
+                background: var(--line);
+                flex: none;
+            }
+            .name {
+                font-weight: 600;
+            }
+            .muted {
+                color: var(--muted);
+            }
+            dl {
+                display: grid;
+                grid-template-columns: max-content 1fr;
+                gap: 4px 16px;
+                margin: 16px 0 0;
+                padding-top: 16px;
+                border-top: 1px solid var(--line);
+            }
+            dt {
+                color: var(--muted);
+            }
+            dd {
+                margin: 0;
+                font-variant-numeric: tabular-nums;
+                overflow-wrap: anywhere;
+            }
+            .badge {
+                display: inline-block;
+                padding: 1px 8px;
+                border-radius: 999px;
+                background: var(--accent);
+                color: #fff;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root" class="muted">Connecting to ivCampus…</div>
+
+        <script>
+            // A complete ivCampus widget in one file: no build step, no dependencies.
+            // It implements the same postMessage protocol @ivicos-gmbh/widget-sdk wraps.
+            //
+            // This id MUST match the Widget ID you register in Campus Settings, character for
+            // character. A mismatch is silent - the host simply never answers.
+            var WIDGET_ID = 'hello-widget';
+
+            var root = document.getElementById('root');
+            var hostOrigin = null;
+            var settled = false;
+
+            function esc(value) {
+                return String(value == null ? '' : value).replace(/[&<>"]/g, function (ch) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
+                });
+            }
+
+            function render(context) {
+                settled = true;
+
+                // theme is typed 'light' | 'dark'; ivCampus currently always sends 'light'.
+                document.documentElement.setAttribute('data-theme', context.theme === 'dark' ? 'dark' : 'light');
+
+                // displayName can be an empty string while the host is still resolving it.
+                var name = context.displayName || 'there';
+
+                // avatar is absent when the user has no picture set - render a placeholder, not a broken image.
+                var avatar = context.avatar
+                    ? '<img class="avatar" alt="" src="' + esc(context.avatar) + '" />'
+                    : '<div class="avatar"></div>';
+
+                // room is absent only if the host has no room in scope yet. Guard it.
+                var room = context.room
+                    ? esc(context.room.name) + ' <span class="badge">' + esc(context.room.type) + '</span>'
+                    : '<span class="muted">no room in scope</span>';
+
+                root.className = '';
+                root.innerHTML =
+                    '<div class="row">' +
+                    avatar +
+                    '<div><div class="name">Hello, ' + esc(name) + '</div>' +
+                    '<div class="muted">' + esc(context.status || 'status unknown') + '</div></div>' +
+                    '</div>' +
+                    '<dl>' +
+                    '<dt>Room</dt><dd>' + room + '</dd>' +
+                    '<dt>Room ID</dt><dd>' + esc(context.room ? context.room.id : '—') + '</dd>' +
+                    '<dt>Locale</dt><dd>' + esc(context.locale) + '</dd>' +
+                    '<dt>Campus</dt><dd>' + esc(context.campusId) + '</dd>' +
+                    '<dt>Area</dt><dd>' + esc(context.areaId || '—') + '</dd>' +
+                    '</dl>';
+
+                reportHeight();
+            }
+
+            function send(message) {
+                // Before the handshake we don't know the host's origin, so '*' is unavoidable.
+                // These messages carry no secrets. Afterwards we always target the pinned origin.
+                window.parent.postMessage(message, hostOrigin || '*');
+            }
+
+            var lastHeight = null;
+            function reportHeight() {
+                var height = Math.ceil(document.body.scrollHeight);
+                if (height === lastHeight) return;
+                lastHeight = height;
+                send({ source: 'ivicos-widget-sdk', type: 'resize', height: height });
+            }
+
+            window.addEventListener('message', function (event) {
+                if (event.source !== window.parent) return;
+
+                var msg = event.data;
+                if (!msg || msg.source !== 'ivicos-widget-host') return;
+
+                // Origin pinning. The first accepted message defines the host's origin; everything
+                // afterwards must come from that exact origin. Checking `event.source` alone is not
+                // enough - the parent could later navigate to an untrusted origin and impersonate
+                // the host. This is the one part you must not skip when hand-rolling the protocol.
+                if (hostOrigin === null) {
+                    hostOrigin = event.origin;
+                } else if (event.origin !== hostOrigin) {
+                    return;
+                }
+
+                if (msg.type === 'handshake') {
+                    send({ source: 'ivicos-widget-sdk', type: 'handshake-ack', nonce: msg.nonce });
+                } else if (msg.type === 'context') {
+                    render(msg.context);
+                } else if (msg.type === 'visibility-change') {
+                    // Backgrounded is not closed: pause work, don't tear down.
+                    if (msg.visible) reportHeight();
+                } else if (msg.type === 'session-ending') {
+                    // Last chance to flush unsaved state.
+                    root.textContent = 'Session ending…';
+                }
+            });
+
+            if (window.parent === window) {
+                // Opened directly rather than embedded - say so instead of hanging forever.
+                root.textContent = 'This page runs as an ivCampus widget. Open it inside ivCampus.';
+            } else {
+                send({ source: 'ivicos-widget-sdk', type: 'ready', widgetId: WIDGET_ID, sdkVersion: 2 });
+
+                setTimeout(function () {
+                    if (settled) return;
+                    root.textContent =
+                        'No response from ivCampus after 10s. The usual cause is a Widget ID mismatch: ' +
+                        'this page announces "' + WIDGET_ID + '".';
+                }, 10000);
+
+                // Keep the host's iframe sized to the content.
+                if (typeof ResizeObserver !== 'undefined') {
+                    new ResizeObserver(reportHeight).observe(document.body);
+                }
+            }
+        </script>
+    </body>
+</html>
