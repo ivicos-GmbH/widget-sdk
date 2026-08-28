@@ -31,7 +31,7 @@ iterating on a single test.
 `test/sdk.test.ts` (Vitest, `jsdom` environment) covers the postMessage protocol end-to-end:
 handshake/context flow, origin pinning (both the `event.origin` check and the
 `event.source === window.parent` check), visibility/context listener unsubscribe, `reportResize`
-dedup, `call()`/RPC round-trips including unrecognized response ids, and `destroy()` cleanup.
+dedup, delivery of the `room` object on context (initial and on change), and `destroy()` cleanup.
 When touching `onMessage`, `waitForHandshake`, or anything origin/security-related in `sdk.ts`,
 run `yarn test` and extend this suite rather than trusting manual testing.
 
@@ -61,16 +61,15 @@ and check `git status` for an accompanying `lib/` diff.
 The entire SDK is three files in `src/`:
 
 - `types.ts` — `WidgetContext` (the read-only data a widget receives: theme, locale, campusId,
-  optional areaId/roomId, displayName, and the optional `avatar`/`status` fields), `WidgetRoomInfo`/
-  `WidgetPersonalRoomInfo` (the typed `sdk.data.*` RPC result shapes), and the two
+  optional areaId, displayName, the optional `avatar`/`status` fields, and the optional `room`
+  object carrying the room's id, name and `'personal' | 'common'` type), and the two
   discriminated-union message types, `HostToWidgetMessage` / `WidgetToHostMessage`, that define
   the wire protocol — including the `session-ending` variant on `HostToWidgetMessage`. There is
   no standalone presence message type: presence is just the `status` field on `context`, pushed
   the same way `avatar`/`displayName` already are.
 - `sdk.ts` — the `WidgetSDK` class, the entire implementation.
 - `index.ts` — the public export surface: `WidgetSDK`, `SDK_VERSION`, and the `WidgetContext`/
-  `InitOptions`/`WidgetRoomInfo`/`WidgetPersonalRoomInfo` types. Nothing internal to `sdk.ts`
-  should be exported here beyond this.
+  `InitOptions` types. Nothing internal to `sdk.ts` should be exported here beyond this.
 
 Imports between these files use explicit `.js` extensions on `.ts` source (e.g.
 `from './types.js'`) — required by `moduleResolution: NodeNext` in tsconfig.json. Don't drop the
@@ -89,8 +88,8 @@ under NodeNext resolution.
 3. Host pushes `context` (the `WidgetContext`); `init()` resolves once both handshake and first
    context have arrived.
 4. Afterward: `context` updates on room/theme/locale changes, `visibility-change` when the
-   widget's panel is backgrounded, and `rpc-request`/`rpc-response` for `WidgetSDK.call()` (see
-   below).
+   widget's panel is backgrounded, and `session-ending` before teardown. That is the whole
+   protocol — there is no request/response direction.
 
 **Origin pinning is the security-critical part and the reason this class exists instead of
 widget authors hand-rolling `postMessage` code.** The *first* message accepted from the host
@@ -104,15 +103,18 @@ rationale in full.
 
 ### Current capability boundary
 
-`WidgetSDK.call()`, the `rpc-request`/`rpc-response` message types, and the typed `sdk.data.getRoom()`/
-`sdk.data.getPersonalRoom()` wrappers all exist and are covered by `test/sdk.test.ts` against
-mocked RPC responses — the client-side plumbing for scoped data access is real and tested.
-campus-alpha-client (the actual host) now answers these RPC requests for real: `WidgetHost.state.tsx`
-routes `room.get` to `resourceService.getWidgetRoom` (campus-api's `GET widget-api/:widgetId/room`)
-and `personalRoom.get` to `idpService.getWidgetPersonalRoom` (identity-provider's personal-room
-route, unwrapped/renamed to match `WidgetPersonalRoomInfo`). If asked to build against real RPC
-methods, the end-to-end chain is wired — verify the current shape in campus-alpha-client first
-rather than assuming this doc is still accurate, since it can drift again.
+The context push is the entire data surface. There is no RPC, no widget-session token and no
+scopes anywhere in the chain — `WidgetSDK.call()`, `sdk.data.getRoom()`, `sdk.data.getPersonalRoom()`
+and the `rpc-request`/`rpc-response` envelopes were all removed in SDK v2, along with the backend
+routes they proxied to (campus-api's `widget-api/:widgetId/room` and identity-provider's
+`v1/widget-api/:widgetId/personal-room`) and the `room:read:basic` / `room:read:members` /
+`personal-room:read` scopes.
+
+Room name and personal-vs-common now arrive on `context.room`, which the host builds from state it
+already holds. If a widget ever needs data the context doesn't carry, the answer is to add a field
+to `WidgetContext` — not to reintroduce a fetch path. A widget that needs a *verifiable* identity
+for its own backend is a genuinely different problem and would need a token that actually reaches
+the widget, which the removed design never did.
 
 ## Code style
 

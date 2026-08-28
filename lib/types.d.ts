@@ -1,28 +1,17 @@
-export declare const SDK_VERSION = 1;
+export declare const SDK_VERSION = 2;
 export interface WidgetContext {
     theme: 'light' | 'dark';
     locale: string;
     campusId: string;
     areaId?: string;
-    roomId?: string;
     displayName: string;
     avatar?: string;
     status?: string;
-}
-export interface WidgetRoomInfo {
-    id: string;
-    name: string;
-    iconKey: string;
-    isPrivate: boolean;
-    isAudioOnly: boolean;
-    isOpenForVisitors: boolean;
-    whitelist?: string[] | null;
-    creatorId?: string;
-}
-export interface WidgetPersonalRoomInfo {
-    roomId: string;
-    topImageIndex: number;
-    bottomImageIndex: number;
+    room?: {
+        id: string;
+        name: string;
+        type: 'personal' | 'common';
+    };
 }
 export interface InitOptions {
     widgetId: string;
@@ -42,12 +31,6 @@ export type HostToWidgetMessage = {
 } | {
     source: 'ivicos-widget-host';
     type: 'session-ending';
-} | {
-    source: 'ivicos-widget-host';
-    type: 'rpc-response';
-    id: string;
-    result?: unknown;
-    error?: string;
 };
 export type WidgetToHostMessage = {
     source: 'ivicos-widget-sdk';
@@ -62,11 +45,5 @@ export type WidgetToHostMessage = {
     source: 'ivicos-widget-sdk';
     type: 'resize';
     height: number;
-} | {
-    source: 'ivicos-widget-sdk';
-    type: 'rpc-request';
-    id: string;
-    method: string;
-    params?: unknown;
 };
 //# sourceMappingURL=types.d.ts.map
