@@ -4,7 +4,7 @@
 
 ---
 
-## Deutsch
+## Deutsche Anleitung
 
 SDK zum Erstellen von Widgets, die sich in [ivCampus](https://ivicos-campus.app) einbetten lassen — innerhalb
 eines Raums oder des persönlichen Dashboards. Ein Widget ist eine beliebige Seite, die du unter deiner eigenen
