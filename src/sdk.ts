@@ -1,24 +1,6 @@
-import {
-    SDK_VERSION,
-    type HostToWidgetMessage,
-    type InitOptions,
-    type WidgetContext,
-    type WidgetPersonalRoomInfo,
-    type WidgetRoomInfo,
-    type WidgetToHostMessage
-} from './types.js';
-
-function randomNonce(): string {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    // Fallback for older embedding environments without crypto.randomUUID.
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
+import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types.js';
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
-
-type PendingRpcCall = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
 /**
  * SDK for widgets embedded into ivCampus. One instance per page - construct it once and call
@@ -40,13 +22,6 @@ export class WidgetSDK {
     private visibilityListeners = new Set<(visible: boolean) => void>();
 
     private sessionEndingListeners = new Set<() => void>();
-
-    private pendingRpcCalls = new Map<string, PendingRpcCall>();
-
-    public readonly data = {
-        getRoom: (): Promise<WidgetRoomInfo> => this.call<WidgetRoomInfo>('room.get'),
-        getPersonalRoom: (): Promise<WidgetPersonalRoomInfo> => this.call<WidgetPersonalRoomInfo>('personalRoom.get')
-    };
 
     private resizeObserver: ResizeObserver | null = null;
 
@@ -84,17 +59,6 @@ export class WidgetSDK {
             }
             case 'session-ending': {
                 [...this.sessionEndingListeners].forEach((listener) => listener());
-                break;
-            }
-            case 'rpc-response': {
-                const pending = this.pendingRpcCalls.get(message.id);
-                if (!pending) return;
-                this.pendingRpcCalls.delete(message.id);
-                if (message.error) {
-                    pending.reject(new Error(message.error));
-                } else {
-                    pending.resolve(message.result);
-                }
                 break;
             }
         }
@@ -155,15 +119,6 @@ export class WidgetSDK {
         this.send({ source: 'ivicos-widget-sdk', type: 'resize', height });
     }
 
-    /** Calls a host-provided RPC method. The set of available methods depends on this widget's granted permissions. */
-    public call<TResult = unknown>(method: string, params?: unknown): Promise<TResult> {
-        const id = randomNonce();
-        return new Promise<TResult>((resolve, reject) => {
-            this.pendingRpcCalls.set(id, { resolve: resolve as (value: unknown) => void, reject });
-            this.send({ source: 'ivicos-widget-sdk', type: 'rpc-request', id, method, params });
-        });
-    }
-
     /** Stops watching for resize/messages. Call this if the widget's own page is being torn down without a full reload. */
     public destroy(): void {
         window.removeEventListener('message', this.onMessage);
@@ -172,10 +127,6 @@ export class WidgetSDK {
         this.contextListeners.clear();
         this.visibilityListeners.clear();
         this.sessionEndingListeners.clear();
-        this.pendingRpcCalls.forEach((pending) => {
-            pending.reject(new Error('WidgetSDK: destroyed before the host responded'));
-        });
-        this.pendingRpcCalls.clear();
     }
 
     private send(message: WidgetToHostMessage): void {

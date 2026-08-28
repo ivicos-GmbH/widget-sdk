@@ -1,5 +1,5 @@
 /** SDK major version. Bumped on any breaking change to the postMessage envelope shape. */
-export const SDK_VERSION = 1;
+export const SDK_VERSION = 2;
 
 /** Read-only context the host pushes down after a successful handshake. Never contains secrets or bearer tokens. */
 export interface WidgetContext {
@@ -7,33 +7,20 @@ export interface WidgetContext {
     locale: string;
     campusId: string;
     areaId?: string;
-    roomId?: string;
     displayName: string;
     /** Optional avatar image URL for the viewing user. Absent if they have none set. */
     avatar?: string;
     /** Coarse presence status for the viewing user (e.g. "online", "away"). Absent if unknown. */
     status?: string;
-}
-
-/** Information about the current room. */
-export interface WidgetRoomInfo {
-    id: string;
-    name: string;
-    iconKey: string;
-    isPrivate: boolean;
-    isAudioOnly: boolean;
-    isOpenForVisitors: boolean;
-    /** Only present if the widget's token scope includes `room:read:members`. */
-    whitelist?: string[] | null;
-    /** Only present if the widget's token scope includes `room:read:members`. */
-    creatorId?: string;
-}
-
-/** Information about the personal room. */
-export interface WidgetPersonalRoomInfo {
-    roomId: string;
-    topImageIndex: number;
-    bottomImageIndex: number;
+    /**
+     * The room this widget is placed in. Absent only if the host has no room in scope yet - every
+     * placement is inside a room, either a user's own personal room or a common one.
+     */
+    room?: {
+        id: string;
+        name: string;
+        type: 'personal' | 'common';
+    };
 }
 
 export interface InitOptions {
@@ -46,11 +33,9 @@ export type HostToWidgetMessage =
     | { source: 'ivicos-widget-host'; type: 'handshake'; nonce: string }
     | { source: 'ivicos-widget-host'; type: 'context'; context: WidgetContext }
     | { source: 'ivicos-widget-host'; type: 'visibility-change'; visible: boolean }
-    | { source: 'ivicos-widget-host'; type: 'session-ending' }
-    | { source: 'ivicos-widget-host'; type: 'rpc-response'; id: string; result?: unknown; error?: string };
+    | { source: 'ivicos-widget-host'; type: 'session-ending' };
 
 export type WidgetToHostMessage =
     | { source: 'ivicos-widget-sdk'; type: 'ready'; widgetId: string; sdkVersion: number }
     | { source: 'ivicos-widget-sdk'; type: 'handshake-ack'; nonce: string }
-    | { source: 'ivicos-widget-sdk'; type: 'resize'; height: number }
-    | { source: 'ivicos-widget-sdk'; type: 'rpc-request'; id: string; method: string; params?: unknown };
+    | { source: 'ivicos-widget-sdk'; type: 'resize'; height: number };
