@@ -6,15 +6,19 @@
 
 ## Deutsche Anleitung
 
+**Warum ein Widget für den ivCAMPUS bereitstellen?**
+Der ivCAMPUS ist der Ort an dem Menschen sinnvollerweise zusammenarbeiten. Manche vergleichen den ivCAMPUS mit MS Teams andere sprechen vom logischen Evolutionären nächsten Schritt nach Slack. Wie auch immer man ihn einordnet. Für Verwaltungen ist er der souveräne Arbeitsplatz der Zukunft mit Blick auf alles was Wichtig ist: Die Kollegen, was im Büro los ist und den Status wichtiger Werkzeuge, angefangen bei Email, Kalender und Aufgaben bis hin zu den wichtigsten Informationen deiner Anwendung, die den Nutzer entweder bereits in einem 350x350px-Widget wichtig Information zu liefern oder aufgrund der dort angezeigten Inhalte veranlasst, in deine Applikation zu wechseln, um seine Arbeit zu erledigen. Gemeinsam helfen wir Nutzern gemeinsam einen produktiven Arbeitstag miteinander zu gestalten. 
+
+**Was ist ein Widget?**
 SDK zum Erstellen von Widgets, die sich in [ivCampus](https://ivicos-campus.app) einbetten lassen — innerhalb
 eines Raums oder des persönlichen Dashboards. Ein Widget ist eine beliebige Seite, die du unter deiner eigenen
 HTTPS-URL hostest; ivCampus bettet sie in ein sandboxed `<iframe>` ein, und dieses SDK übernimmt Handshake,
 Kontext, Größenanpassung und den RPC-Transport zwischen deiner Seite und dem Host.
 
-Dieses Dokument ist der vollständige Leitfaden für externe Entwickler:innen: was ein Widget kann und nicht kann,
+Dieses Dokument ist der Leitfaden für externe Entwickler:innen: Was ein Widget kann und nicht kann,
 wie du eines baust und wie du es auf einer echten ivCampus-Organisation live bekommst.
 
-### Status — Zuerst lesen
+### Status — Bitte dies zuerst lesen
 
 Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konkret:
 
@@ -29,11 +33,11 @@ Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konk
   irgendjemanden nutzbar ist (siehe [Dein Widget einreichen](#dein-widget-einreichen) weiter unten).
 - **Eine Freigabe ist nicht endgültig.** Ein freigegebenes Widget kann nachträglich gesperrt werden;
   es wird dann überall dort nicht mehr gerendert, wo es aktiviert war. Behandle das Verschwinden als
-  normalen Zustand, nicht als Absturz.
+  normalen Zustand, nicht als Absturz. Auf diese Weise können wir dem Nutzer ein störungsfreies Erlebnis bieten, auch, wenn mal an einer Stelle etwas nicht funktioniert.
 - Das SDK wird über **GitHub Packages** veröffentlicht, nicht über die öffentliche npm-Registry — siehe
   [Installation](#installation).
 
-Nichts davon ist ein Bug, den man umgehen sollte; entwickle gegen das, was tatsächlich vorhanden ist.
+Nichts davon ist ein Bug, den man umgehen sollte; entwickle bitte einfach gegen das, was tatsächlich vorhanden ist. Du wirst sehen, dass das sinnvoll ist und für die Nutzer passend.
 
 ### Installation
 
@@ -506,6 +510,10 @@ jedem Push/PR, indem ein frischer Build gegen das Committete verglichen wird.
 
 ## English
 
+**Why Provide a Widget for ivCAMPUS?**
+ivCAMPUS is the place where people collaborate effectively. Some compare ivCAMPUS to Microsoft Teams; others call it the logical, evolutionary next step beyond Slack. However you choose to categorize it, for administrative departments, it is the ultimate workplace of the future, offering a view of everything that matters: Colleagues, what’s happening in the office, and the status of key tools—from email, calendars, and tasks all the way to the most important information from your application—which either provides users with essential information right within a 350x350px widget or, based on the content displayed there, prompts them to switch to your application to get their work done. Together, we help users shape a productive workday. 
+
+**What is a widget?**
 SDK for building widgets that embed into [ivCampus](https://ivicos-campus.app) — inside a Room
 or the Personal Dashboard. A widget is any page you host at your own HTTPS URL; ivCampus embeds
 it in a sandboxed `<iframe>` and this SDK handles the handshake, context, resizing, and RPC
@@ -514,7 +522,7 @@ transport between your page and the host.
 This document is the complete guide for external developers: what a widget can and can't do,
 how to build one, and how to get it live on a real ivCampus org.
 
-### Status — read this first
+### Status — please read this first
 
 This is an early phase of the widget system, with real constraints. Concretely:
 
@@ -531,7 +539,8 @@ This is an early phase of the widget system, with real constraints. Concretely:
 - The SDK is published to **GitHub Packages**, not the public npm registry — see
   [Install](#install).
 
-None of this is a bug to work around; build against what's actually there.
+None of this is a bug that should be worked around; please just develop based on what's actually there. 
+You'll see that it makes sense and works well for users.
 
 ### Install
 
