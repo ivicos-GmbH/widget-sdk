@@ -1,6 +1,9 @@
 import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types.js';
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
+// A host that completes the handshake and then never pushes a context would otherwise leave
+// init() pending forever. Each stage gets its own deadline rather than one shared budget.
+const CONTEXT_TIMEOUT_MS = 10_000;
 
 /**
  * SDK for widgets embedded into ivCampus. One instance per page - construct it once and call
@@ -159,8 +162,14 @@ export class WidgetSDK {
 
     private waitForFirstContext(): Promise<WidgetContext> {
         if (this.context) return Promise.resolve(this.context);
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                unsubscribe();
+                reject(new Error('WidgetSDK: host completed the handshake but never sent a context'));
+            }, CONTEXT_TIMEOUT_MS);
+
             const unsubscribe = this.onContextChange((context) => {
+                clearTimeout(timeout);
                 unsubscribe();
                 resolve(context);
             });

@@ -67,6 +67,16 @@ describe('WidgetSDK', () => {
         await assertion;
     });
 
+    it('rejects init() if the host handshakes but never sends a context', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'handshake', nonce: 'nonce-1' });
+        const assertion = expect(initPromise).rejects.toThrow('never sent a context');
+        await vi.advanceTimersByTimeAsync(0); // let init() get past the handshake and arm the context deadline
+        await vi.advanceTimersByTimeAsync(10_000);
+        await assertion;
+    });
+
     it('resolves init() with the first context after a full handshake', async () => {
         const initPromise = sdk.init({ widgetId: 'test-widget' });
         await completeHandshakeAndContext(parent);

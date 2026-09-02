@@ -268,7 +268,7 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 
 | Methode | Rückgabe | Hinweise |
 |---|---|---|
-| `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt nach 10 s ab, wenn der Host nie antwortet. Ein zweiter Aufruf wirft. |
+| `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt ab, wenn der Host den Handshake nicht innerhalb von 10 s abschließt oder danach nicht innerhalb von weiteren 10 s den ersten Kontext sendet. Ein zweiter Aufruf wirft. |
 | `getContext()` | `WidgetContext \| null` | Der zuletzt empfangene Kontext. `null`, bis `init()` sich auflöst — nimm bevorzugt den Wert aus `init()`. |
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
@@ -487,6 +487,10 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
   Nachricht, gegen eine fixierte erwartete Origin validiert — siehe
   [den Protokoll-Abschnitt](#das-protokoll-falls-du-dieses-sdk-nicht-verwendest) oben oder `src/sdk.ts` für
   die genaue Implementierung.
+
+**Ein Sicherheitsproblem gefunden?** Bitte melde es vertraulich — [SECURITY.md](SECURITY.md)
+beschreibt, was im Geltungsbereich liegt und wohin du schreibst. Bitte kein öffentliches Issue für
+Sicherheitsfehler.
 
 ### Build (für Beiträge zum SDK selbst)
 
@@ -763,7 +767,7 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 
 | Method | Returns | Notes |
 |---|---|---|
-| `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects after 10s if the host never answers. Calling it twice throws. |
+| `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects if the host fails to complete the handshake within 10s, or fails to follow it with a first context within a further 10s. Calling it twice throws. |
 | `getContext()` | `WidgetContext \| null` | The most recently received context. `null` until `init()` resolves — prefer the value `init()` gives you. |
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
@@ -973,6 +977,9 @@ Test your widget against a real host before submitting, rather than debugging bl
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)
   above, or `src/sdk.ts` for the exact implementation.
+
+**Found a security problem?** Report it privately — see [SECURITY.md](SECURITY.md) for what is in
+scope and where to send it. Please don't open a public issue for security bugs.
 
 ### Build (for contributing to the SDK itself)
 
