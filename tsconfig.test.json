@@ -1,7 +1,10 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-        "noEmit": true
+        "noEmit": true,
+        // The base config pins rootDir to src/ so tsc lays lib/ out flat. This config type-checks
+        // test/ as well and emits nothing, so it widens rootDir back to the repo root.
+        "rootDir": "."
     },
     "include": ["src/**/*", "test/**/*"]
 }
