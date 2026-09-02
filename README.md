@@ -9,7 +9,7 @@
 SDK zum Erstellen von Widgets, die sich in [ivCampus](https://ivicos-campus.app) einbetten lassen — innerhalb
 eines Raums oder des persönlichen Dashboards. Ein Widget ist eine beliebige Seite, die du unter deiner eigenen
 HTTPS-URL hostest; ivCampus bettet sie in ein sandboxed `<iframe>` ein, und dieses SDK übernimmt Handshake,
-Kontext, Größenanpassung und den RPC-Transport zwischen deiner Seite und dem Host.
+Kontext, Größenanpassung und den Nachrichtentransport zwischen deiner Seite und dem Host.
 
 Dieses Dokument ist der vollständige Leitfaden für externe Entwickler:innen: was ein Widget kann und nicht kann,
 wie du eines baust und wie du es auf einer echten ivCampus-Organisation live bekommst.
@@ -429,9 +429,9 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    |---|---|
    | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
    | Name | Freitext, nur zur Anzeige |
-   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) — wird aktuell gegen nichts geprüft, braucht nur diese Form |
+   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
    | Widget-URL | deine HTTPS-Iframe-URL |
-   | Icon-URL | jede erreichbare URL, wird nicht als tatsächliches Bild validiert |
+   | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
    | Beschreibung | Freitext |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
 
@@ -456,10 +456,10 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
-nicht verwendest), müssen Zeichen für Zeichen übereinstimmen.** Falls nicht, gibt es bei der Einreichung
-keinen Fehler — das Widget bleibt einfach hängen und lädt nicht, mit Timeout nach 10 Sekunden und einer
-generischen "this widget did not respond"-Meldung ohne weitere Details, woran es liegt. Das ist die häufigste
-Art, wie ein korrekt gebautes Widget kaputt erscheint.
+nicht verwendest), müssen Zeichen für Zeichen übereinstimmen.** Stimmen sie nicht überein, lädt das
+Widget nicht: es läuft nach 10 Sekunden in einen Timeout mit einer generischen "this widget did not
+respond"-Meldung. Das ist die häufigste Art, wie ein korrekt gebautes Widget kaputt erscheint — prüf
+zuerst diese beiden Werte.
 
 ### Lokale Entwicklung
 
@@ -508,7 +508,7 @@ jedem Push/PR, indem ein frischer Build gegen das Committete verglichen wird.
 
 SDK for building widgets that embed into [ivCampus](https://ivicos-campus.app) — inside a Room
 or the Personal Dashboard. A widget is any page you host at your own HTTPS URL; ivCampus embeds
-it in a sandboxed `<iframe>` and this SDK handles the handshake, context, resizing, and RPC
+it in a sandboxed `<iframe>` and this SDK handles the handshake, context, resizing, and message
 transport between your page and the host.
 
 This document is the complete guide for external developers: what a widget can and can't do,
@@ -919,9 +919,9 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    |---|---|
    | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
    | Name | free text, purely for display |
-   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) — not currently checked against anything, just needs the shape |
+   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
    | Widget URL | your HTTPS iframe URL |
-   | Icon URL | any reachable URL, not validated as an actual image |
+   | Icon URL | publicly reachable HTTPS URL to your icon |
    | Description | free text |
    | Placement | Room, Personal dashboard, or both — at least one is required |
 
@@ -945,10 +945,9 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
-the SDK) must match, character for character.** If they don't, nothing errors on submission —
-the widget will simply sit there failing to load, timing out after 10 seconds with a generic
-"this widget did not respond" message and no further detail about why. This is the single most
-common way a correctly-built widget appears broken.
+the SDK) must match, character for character.** If they don't, the widget won't load: it times out
+after 10 seconds with a generic "this widget did not respond" message. This is the single most
+common way a correctly-built widget appears broken — check those two values first.
 
 ### Local development
 

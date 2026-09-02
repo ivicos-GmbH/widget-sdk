@@ -3,6 +3,12 @@
   "version": "0.2.0",
   "description": "SDK for building external widgets that embed into ivCampus (Rooms and the Personal Dashboard).",
   "repository": "https://github.com/ivicos-GmbH/widget-sdk.git",
+  "homepage": "https://github.com/ivicos-GmbH/widget-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/ivicos-GmbH/widget-sdk/issues",
+    "email": "support@ivicos.eu"
+  },
+  "author": "ivicos GmbH <support@ivicos.eu>",
   "packageManager": "yarn@1.22.22",
   "type": "module",
   "main": "lib/index.js",

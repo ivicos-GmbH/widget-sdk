@@ -18,6 +18,17 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@ivicos-gmbh'
           cache: yarn
+      # A tag is the only thing that triggers this workflow, but npm publishes whatever
+      # package.json says - so a v0.3.0 tag on a 0.2.0 package.json silently republishes
+      # 0.2.0 (or fails as a duplicate). Fail here instead, before anything is built.
+      - name: Verify tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag does not match package.json version $pkg"
+            exit 1
+          fi
       - run: yarn install --frozen-lockfile
       - run: yarn build
       - run: yarn test
