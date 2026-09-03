@@ -17,7 +17,8 @@ Daten, die jedes freigegebene Widget ohne Berechtigung, Token oder Scope erhält
 
 Nimm `hello-widget`, wenn du die Mechanik sehen oder schnell etwas Lauffähiges registrieren willst.
 Nimm `sdk-widget` als Ausgangspunkt für ein echtes Widget: Das SDK übernimmt Origin-Pinning,
-Handshake, den 10-Sekunden-Timeout und die automatische Höhenmeldung für dich.
+Handshake und den 10-Sekunden-Timeout für dich. Um die Größe musst du dich nicht kümmern — die
+bestimmt der Host, und deine eigene Seite scrollt in dem Bereich, den sie bekommt.
 
 ### `hello-widget` ausprobieren
 
