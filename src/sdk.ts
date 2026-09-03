@@ -82,7 +82,16 @@ export class WidgetSDK {
         this.widgetId = options.widgetId;
         window.addEventListener('message', this.onMessage);
 
-        this.send({ source: 'ivicos-widget-sdk', type: 'ready', widgetId: this.widgetId, sdkVersion: SDK_VERSION });
+        // Spread rather than `hasBackFace: options.backFace`: a widget that never opted in must
+        // send a `ready` with the key *absent*, not present-and-undefined, so its message is
+        // byte-identical to what every pre-back-face widget already sends.
+        this.send({
+            source: 'ivicos-widget-sdk',
+            type: 'ready',
+            widgetId: this.widgetId,
+            sdkVersion: SDK_VERSION,
+            ...(options.backFace === true ? { hasBackFace: true } : {})
+        });
 
         await this.waitForHandshake();
         const context = await this.waitForFirstContext();

@@ -277,4 +277,30 @@ describe('WidgetSDK', () => {
         expect(listener.mock.calls[0][0].room).toEqual({ id: 'personal-ada', name: "Ada's room", type: 'personal' });
         expect(sdk.getContext()?.room?.type).toBe('personal');
     });
+
+    it('does not announce a back face unless the widget opts in', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const calls = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+        const readyCall = calls.find(([msg]) => msg.type === 'ready');
+        expect(readyCall?.[0]).not.toHaveProperty('hasBackFace');
+    });
+
+    it('announces a back face on ready when backFace is set', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', backFace: true });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const calls = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+        const readyCall = calls.find(([msg]) => msg.type === 'ready');
+        expect(readyCall?.[0]).toEqual({
+            source: 'ivicos-widget-sdk',
+            type: 'ready',
+            widgetId: 'test-widget',
+            sdkVersion: SDK_VERSION,
+            hasBackFace: true
+        });
+    });
 });

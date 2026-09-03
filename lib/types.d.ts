@@ -15,6 +15,7 @@ export interface WidgetContext {
 }
 export interface InitOptions {
     widgetId: string;
+    backFace?: boolean;
 }
 export type HostToWidgetMessage = {
     source: 'ivicos-widget-host';
@@ -37,6 +38,7 @@ export type WidgetToHostMessage = {
     type: 'ready';
     widgetId: string;
     sdkVersion: number;
+    hasBackFace?: boolean;
 } | {
     source: 'ivicos-widget-sdk';
     type: 'handshake-ack';
