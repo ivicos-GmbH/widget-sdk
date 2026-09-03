@@ -360,6 +360,47 @@ alles, was voraussetzt, gerade sichtbar zu sein. Der Host schickt beim Umdrehen 
 350×350-Karte abzüglich ihrer 56px hohen Kopfzeile). Das reicht für einen Hinweistext und ein,
 zwei Links. Für ein mehrstufiges Formular reicht es nicht.
 
+### Zustand zwischen deinen beiden Seiten teilen
+
+Deine Vorder- und Rückseite sind zwei getrennte Dokumente in zwei getrennten iframes — nicht zwei
+Ansichten eines laufenden Skripts. Nichts im Arbeitsspeicher überträgt sich zwischen ihnen; nur
+was diese Grenze tatsächlich überquert, tut das.
+
+Brauchst du einen Zustand, auf den sich beide Seiten einigen — meistens „ist dieser Nutzer
+angemeldet" — ist Speicher auf deiner eigenen Origin der Weg dorthin: deine Rückseite liegt
+konstruktionsbedingt unter `/backside` auf derselben Origin wie deine Vorderseite, also ist
+`localStorage` (oder ein Cookie), das eine Seite schreibt, für die andere sichtbar.
+
+Zwei Dinge stolpern hier häufig:
+
+**Einmaliges Lesen beim Laden reicht nicht.** Die Rückseite bleibt nach dem ersten Umdrehen
+gemountet — sie wird nicht bei jedem Umdrehen neu erzeugt. Meldet sich der Nutzer also auf einer
+Seite ab, während die andere noch offen ist, bemerkt diese es nicht, solange sie nicht zuhört.
+Gleichen-Ursprungs-Geschwisterdokumente erhalten ein natives `storage`-Ereignis, sobald eines von
+ihnen `localStorage` ändert — höre darauf, um live zu reagieren:
+
+```ts
+window.addEventListener('storage', (event) => {
+    if (event.key === 'my-widget-signed-in') {
+        // reagiere auf die Änderung der ANDEREN Seite - eigene Schreibvorgänge lösen dieses
+        // Ereignis bei dir selbst nicht aus
+    }
+});
+```
+
+**Dein Widget ist auf einer fremden Seite eingebettet, sein Speicher kann also partitioniert oder
+blockiert sein.** Browser schränken Speicher für ein iframe, dessen Top-Level-Seite eine andere
+Site ist als die Origin des iframes, zunehmend ein — das trifft auf jedes Widget hier zu. Verhält
+sich `localStorage` nicht wie erwartet, ist die standardbasierte Lösung die [Storage Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_Access_API):
+`document.requestStorageAccess()`, aufgerufen aus einer echten Nutzerinteraktion (ein Klick, ein
+Formular-Submit) — das iframe des Hosts trägt bereits das dafür nötige
+`allow-storage-access-by-user-activation`-Sandbox-Token.
+
+Nichts davon läuft über den Host. Der Host sieht, speichert oder leitet niemals etwas über den
+Anmeldestatus deines Widgets weiter — er gibt dir nur das Umdrehen und die
+`visibility-change`-Nachricht.
+
 ### Hosting-Anforderungen
 
 Jede HTTPS-URL, die du kontrollierst, funktioniert, mit drei harten Anforderungen:
@@ -923,6 +964,44 @@ as the card turns, so pause polling when you are flipped away.
 **Size:** in a dashboard card the back face gets roughly **294px** of height (a 350×350 card less
 its 56px header). That fits a block of guidance and a link or two. It does not fit a multi-step
 form.
+
+### Sharing state between your two faces
+
+Your front and back pages are two separate documents in two separate iframes - not two views of
+one running script. Nothing in memory carries over between them; only something that actually
+crosses that boundary does.
+
+If you need state both faces agree on - most commonly "is this user signed in" - storage on your
+own origin is the way to do it: your back face lives at `/backside` on the same origin as your
+front by construction, so `localStorage` (or a cookie) written by one face is visible to the
+other.
+
+Two things trip people up here:
+
+**Reading it once at load isn't enough.** The back face stays mounted after the first flip - it
+is not re-created on every flip - so if the user signs out on one face while the other is still
+open, that other face won't notice unless it's listening. Same-origin sibling documents get a
+native `storage` event whenever one of them changes `localStorage` - listen for it to react live:
+
+```ts
+window.addEventListener('storage', (event) => {
+    if (event.key === 'my-widget-signed-in') {
+        // react to the *other* face's change - your own writes don't fire this event on you
+    }
+});
+```
+
+**Your widget is embedded on someone else's page, so its storage may be partitioned or blocked.**
+Browsers increasingly restrict storage for an iframe whose top-level page is a different site than
+the iframe's own origin - which describes every widget here. If `localStorage` isn't behaving the
+way you expect, the standards-based fix is the [Storage Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_Access_API):
+`document.requestStorageAccess()`, called from a real user gesture (a click, a form submit) - the
+host's iframe already carries the `allow-storage-access-by-user-activation` sandbox token needed
+for it to work.
+
+None of this is host-mediated. The host never sees, stores or forwards anything about your
+widget's own sign-in state - it only ever gives you the flip and the `visibility-change` message.
 
 ### Hosting requirements
 
