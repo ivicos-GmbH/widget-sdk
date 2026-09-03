@@ -273,6 +273,7 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 | Methode | Rückgabe | Hinweise |
 |---|---|---|
 | `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt ab, wenn der Host den Handshake nicht innerhalb von 10 s abschließt oder danach nicht innerhalb von weiteren 10 s den ersten Kontext sendet. Ein zweiter Aufruf wirft. |
+| `init({ backFace: true })` | | Teilt dem Host mit, dass dieses Widget zusätzlich eine Rückseite unter `<deine iframe-URL>/backside` bereitstellt, damit er die Umdrehen-Schaltfläche anbietet. |
 | `getContext()` | `WidgetContext \| null` | Der zuletzt empfangene Kontext. `null`, bis `init()` sich auflöst — nimm bevorzugt den Wert aus `init()`. |
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
@@ -311,6 +312,53 @@ try {
     document.body.textContent = 'Diese Seite läuft als ivCampus-Widget.';
 }
 ```
+
+### Die Rückseite
+
+Eine Widget-Karte im Dashboard lässt sich umdrehen. Vorne steht dein Widget. Hinten erklärst du es
+— was es tut, wie man es benutzt, was deine Filter bedeuten, Links zu deiner eigenen
+Dokumentation.
+
+Liefere sie unter `/backside` aus, relativ zu der URL, die du registriert hast:
+
+```
+registrierte iframe-URL   https://example.com/my-widget
+deine Rückseite           https://example.com/my-widget/backside
+```
+
+Und teile dem Host von der **Vorderseite** aus mit, dass es sie gibt:
+
+```ts
+const sdk = new WidgetSDK();
+const context = await sdk.init({ widgetId: 'my-widget', backFace: true });
+```
+
+Ohne `backFace: true` erscheint nie eine Umdrehen-Schaltfläche — ein bestehendes Widget bleibt
+also unberührt, bis es sich aktiv dafür entscheidet. Setzt du die Option, lieferst aber kein
+`/backside` aus, sehen deine Nutzer auf der Rückseite deine 404-Seite; der Host kann das nicht
+erkennen.
+
+**Die Rückseite braucht dieses SDK nicht.** Eine statische HTML-Datei genügt. Willst du dort
+ebenfalls Theme, Sprache oder den Namen der betrachtenden Person, rufe auch dort `init()` auf —
+sie erhält denselben Kontext wie die Vorderseite.
+
+**Die Anmeldung gehört nicht auf die Rückseite.** Lässt sich dein Widget ohne Konto nicht nutzen,
+zeige deine Anmeldung auf der **Vorderseite** — das ist das Erste, was man sieht, und nach der
+Anmeldung wird daraus dein Widget. Du darfst auch die Rückseite einer Anmeldung vorbehalten, es
+ist deine Seite. Mach sie aber nie zum einzigen Weg hinein: Niemand hat einen Grund, dort zu
+suchen.
+
+**Was auf die Rückseite gehört:** Hinweise zur Nutzung, was dein Widget tut, Links zu deiner
+Dokumentation oder deinem Support, optional eine Abmelden-Schaltfläche oder Einstellungen deines
+Widgets.
+
+**Was nicht:** deine eigentlichen Inhalte, alles, was man zum *Benutzen* des Widgets braucht, und
+alles, was voraussetzt, gerade sichtbar zu sein. Der Host schickt beim Umdrehen an jede Seite ein
+`visibility-change` — pausiere also dein Polling, wenn du weggedreht bist.
+
+**Größe:** In einer Dashboard-Karte stehen der Rückseite etwa **294px** Höhe zur Verfügung (eine
+350×350-Karte abzüglich ihrer 56px hohen Kopfzeile). Das reicht für einen Hinweistext und ein,
+zwei Links. Für ein mehrstufiges Formular reicht es nicht.
 
 ### Hosting-Anforderungen
 
@@ -391,10 +439,12 @@ Box. Die vollständigen Message-Formen:
 **Beim Laden senden:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // oder SDK_VERSION importieren
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2, hasBackFace: true },  // oder SDK_VERSION importieren
     '*' // hier unvermeidbar - du kennst die Origin des Hosts noch nicht, und diese Nachricht enthält keine Geheimnisse
 );
 ```
+
+Das Feld `hasBackFace` ist optional und wird weggelassen, wenn das Widget keine Rückseite bereitstellt. Setzt du es auf `true`, lädt der Host die Rückseite von `<iframeUrl>/backside` — dabei bleiben Query-String und Hash erhalten.
 
 **Auf die Antwort des Hosts warten und dessen Origin ab der ersten akzeptierten Nachricht fixieren:**
 ```js
@@ -790,6 +840,7 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 | Method | Returns | Notes |
 |---|---|---|
 | `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects if the host fails to complete the handshake within 10s, or fails to follow it with a first context within a further 10s. Calling it twice throws. |
+| `init({ backFace: true })` | | Tells the host this widget also serves a back face at `<your iframe URL>/backside`, so it offers the flip control. |
 | `getContext()` | `WidgetContext \| null` | The most recently received context. `null` until `init()` resolves — prefer the value `init()` gives you. |
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
@@ -828,6 +879,50 @@ try {
     document.body.textContent = 'This page runs as an ivCampus widget.';
 }
 ```
+
+### The back face
+
+A widget card in the dashboard can flip over. The front is your widget. The back is where you
+explain it — what it does, how to use it, what your filters mean, links to your own docs.
+
+Serve it at `/backside`, relative to the URL you registered:
+
+```
+registered iframe URL   https://example.com/my-widget
+your back face          https://example.com/my-widget/backside
+```
+
+Then tell the host it exists, from the **front** page:
+
+```ts
+const sdk = new WidgetSDK();
+const context = await sdk.init({ widgetId: 'my-widget', backFace: true });
+```
+
+Without `backFace: true` no flip control ever appears, so an existing widget is unaffected until
+it opts in. If you set it but do not serve `/backside`, users will see your 404 page on the back
+of the card — the host has no way to detect that.
+
+**The back page does not need this SDK.** A static HTML file is fine. If you want the theme,
+locale or the viewer's name there too, call `init()` from it as well and it receives the same
+context the front does.
+
+**Sign-in does not belong on the back face.** If your widget cannot be used without an account,
+show your sign-in on the **front** — that is the first thing a user sees, and signing in there
+turns the front into your widget. You are free to require a session on the back face as well; it
+is your page. But never make the back face the only way in, because a user has no reason to look
+there.
+
+**What belongs on the back:** guidelines and usage notes, what your widget does, links to your
+documentation or support, optionally a sign-*out* control or widget-specific settings.
+
+**What does not:** your primary content, anything a user needs in order to *use* the widget, and
+anything that assumes it is currently on screen. The host sends `visibility-change` to each face
+as the card turns, so pause polling when you are flipped away.
+
+**Size:** in a dashboard card the back face gets roughly **294px** of height (a 350×350 card less
+its 56px header). That fits a block of guidance and a link or two. It does not fit a multi-step
+form.
 
 ### Hosting requirements
 
@@ -904,10 +999,12 @@ message shapes:
 **On load, send:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // or import SDK_VERSION
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2, hasBackFace: true },  // or import SDK_VERSION
     '*' // unavoidable here - you don't know the host's origin yet, and this message carries no secrets
 );
 ```
+
+The `hasBackFace` field is optional and omitted entirely when the widget serves no back face. Set it to `true` and the host loads the back face from `<iframeUrl>/backside`, preserving any query string and hash.
 
 **Listen for the host's reply, and pin its origin from the first accepted message:**
 ```js

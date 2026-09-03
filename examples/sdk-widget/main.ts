@@ -61,7 +61,7 @@ async function main(): Promise<void> {
     let context: WidgetContext;
     try {
         // Resolves once the host has completed the handshake AND pushed the first context.
-        context = await sdk.init({ widgetId: WIDGET_ID });
+        context = await sdk.init({ widgetId: WIDGET_ID, backFace: true });
     } catch {
         // Rejects after 10s rather than hanging. Almost always a Widget ID mismatch, or the
         // page was opened directly instead of embedded in ivCampus.
