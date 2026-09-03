@@ -9,7 +9,7 @@
 SDK zum Erstellen von Widgets, die sich in [ivCampus](https://ivicos-campus.app) einbetten lassen — innerhalb
 eines Raums oder des persönlichen Dashboards. Ein Widget ist eine beliebige Seite, die du unter deiner eigenen
 HTTPS-URL hostest; ivCampus bettet sie in ein sandboxed `<iframe>` ein, und dieses SDK übernimmt Handshake,
-Kontext, Größenanpassung und den Nachrichtentransport zwischen deiner Seite und dem Host.
+Kontext und den Nachrichtentransport zwischen deiner Seite und dem Host. Die Größe bestimmt der Host.
 
 Dieses Dokument ist der vollständige Leitfaden für externe Entwickler:innen: was ein Widget kann und nicht kann,
 wie du eines baust und wie du es auf einer echten ivCampus-Organisation live bekommst.
@@ -526,8 +526,8 @@ jedem Push/PR, indem ein frischer Build gegen das Committete verglichen wird.
 
 SDK for building widgets that embed into [ivCampus](https://ivicos-campus.app) — inside a Room
 or the Personal Dashboard. A widget is any page you host at your own HTTPS URL; ivCampus embeds
-it in a sandboxed `<iframe>` and this SDK handles the handshake, context, resizing, and message
-transport between your page and the host.
+it in a sandboxed `<iframe>` and this SDK handles the handshake, context, and message transport
+between your page and the host. The host decides the size.
 
 This document is the complete guide for external developers: what a widget can and can't do,
 how to build one, and how to get it live on a real ivCampus org.
