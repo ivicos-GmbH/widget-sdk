@@ -135,6 +135,8 @@
                 window.parent.postMessage(message, hostOrigin || '*');
             }
 
+            // Kept only because 'resize' is still part of the wire protocol: the host ignores
+            // it and sizes this iframe itself, so a widget of your own does not need any of this.
             var lastHeight = null;
             function reportHeight() {
                 var height = Math.ceil(document.body.scrollHeight);

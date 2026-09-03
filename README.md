@@ -143,9 +143,9 @@ sdk.onVisibilityChange((visible) => {
     }
 });
 
-// Die Inhaltshöhe wird automatisch über einen ResizeObserver auf document.body gemeldet.
-// Rufe dies nur selbst auf, wenn du das überschreiben musst (z. B. eine bewusst fixe Höhe).
-sdk.reportResize(320);
+// Die Größe bestimmt der Host: Dein Widget bekommt einen Bereich fester Größe, in dem deine
+// eigene Seite ganz normal scrollt. Dafür musst du nichts aufrufen - siehe "Zur Größe deines
+// Widgets" weiter unten.
 ```
 
 `sdk.init()` löst sich auf, sobald der Host den Handshake abgeschlossen **und** den ersten Kontext gesendet hat
@@ -273,16 +273,28 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
 | `onSessionEnding(fn)` | `() => void` | Ruft `fn()` kurz bevor das Widget abgebaut wird. Die letzte Gelegenheit, ungesicherten Zustand zu schreiben. Gibt eine Unsubscribe-Funktion zurück. |
-| `reportResize(height)` | `void` | Meldet die Inhaltshöhe in Pixeln manuell. Meist unnötig — siehe unten. Wiederholte Aufrufe mit derselben Höhe werden ignoriert. |
+| `reportResize(height)` | `void` | Ohne Wirkung auf das Layout: Der Host bestimmt die Größe selbst — siehe unten. Die Nachricht bleibt Teil des Protokolls und wird weiterhin gesendet, vom Host aber ignoriert. Nur noch aus Kompatibilitätsgründen vorhanden. |
 | `destroy()` | `void` | Entfernt den Message-Listener, trennt den ResizeObserver und verwirft alle Listener. Aufrufen, wenn deine Seite das Widget ohne vollen Reload abbaut (etwa bei einem SPA-Routenwechsel). |
 
 Ebenfalls aus dem Paket exportiert: `SDK_VERSION` (die Protokollversion dieses Builds) sowie die
 Typen `WidgetContext` und `InitOptions`.
 
-**Zum Resizing.** `init()` startet einen `ResizeObserver` auf `document.body` und meldet die Höhe
-automatisch — die meisten Widgets rufen `reportResize()` nie auf. Nutze es nur zum Überschreiben:
-für eine bewusst fixe Höhe, oder wenn dein eigentlicher Inhalt in einem absolut positionierten
-Element liegt, das `document.body` nicht mitmisst.
+**Zur Größe deines Widgets.** Die bestimmt der Host, nicht du. Dein Widget wird in einen Bereich
+fester Größe eingebettet, und ist dein Inhalt höher, scrollt deine eigene Seite darin — genau wie in
+jedem anderen eingebetteten iframe. Du musst dafür nichts tun und nichts melden.
+
+Wie groß dieser Bereich ist, hängt vom Platz ab, an dem dein Widget läuft: auf dem Dashboard
+aktuell rund 350×294 CSS-Pixel, im Raum die Größe des Anhang-Bereichs, die mit dem Fenster
+variiert. Daraus folgen drei Dinge:
+
+- **Gestalte responsiv.** Nimm die genannten Zahlen als heutigen Stand, nicht als Zusage.
+- **Schalte dein eigenes Scrollen nicht ab.** `body { overflow: hidden }` ohne eigenen scrollbaren
+  Bereich macht Inhalt unerreichbar, der sonst einfach scrollen würde.
+- **`height: 100%` und `100vh` funktionieren** wie erwartet — dein Widget hat einen echten Viewport.
+
+`init()` startet weiterhin einen `ResizeObserver` auf `document.body` und meldet die Höhe; der Host
+verwendet sie nur nicht mehr fürs Layout. Frühere SDK-Versionen wurden gegen einen Host geschrieben,
+der den iframe auf die gemeldete Höhe wachsen ließ — das ist nicht mehr der Fall.
 
 **Ein fehlgeschlagenes `init()` behandeln.** `init()` lehnt ab, statt endlos zu hängen — fange das ab:
 
@@ -409,9 +421,11 @@ window.addEventListener('message', (event) => {
 });
 ```
 
-**Melde deine Inhaltshöhe, wann immer sie sich ändert** (sonst verwendet der Host eine kleine feste
-Standardgröße):
+**Um die Größe musst du dich nicht kümmern.** Der Host gibt deiner Seite einen Bereich fester Größe,
+in dem sie ganz normal scrollt. Die `resize`-Nachricht gehört weiterhin zum Protokoll und wird
+angenommen, aber ignoriert — senden musst du sie nicht:
 ```js
+// Optional, ohne Wirkung auf das Layout:
 window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'resize', height: document.body.scrollHeight }, hostOrigin);
 ```
 
@@ -645,9 +659,8 @@ sdk.onVisibilityChange((visible) => {
     }
 });
 
-// Content height is reported automatically via a ResizeObserver on document.body.
-// Only call this yourself if you need to override that (e.g. a deliberately fixed height).
-sdk.reportResize(320);
+// The host decides your size: your widget gets a fixed-size area, and your own page scrolls
+// inside it. Nothing to call for that - see "About your widget's size" below.
 ```
 
 `sdk.init()` resolves once the host has completed the handshake **and** pushed the first
@@ -772,16 +785,28 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
 | `onSessionEnding(fn)` | `() => void` | Calls `fn()` shortly before the widget is torn down. Your last chance to flush unsaved state. Returns an unsubscribe function. |
-| `reportResize(height)` | `void` | Manually report content height in pixels. Usually unnecessary — see below. Repeated calls with the same height are ignored. |
+| `reportResize(height)` | `void` | Has no effect on layout: the host decides the size itself — see below. The message stays part of the protocol and is still sent, but the host ignores it. Kept for compatibility only. |
 | `destroy()` | `void` | Removes the message listener, disconnects the resize observer, drops all listeners. Call it if your page tears the widget down without a full reload (an SPA route change, for instance). |
 
 Also exported from the package: `SDK_VERSION` (the protocol version this build speaks) and the
 `WidgetContext` / `InitOptions` types.
 
-**About resizing.** `init()` starts a `ResizeObserver` on `document.body` and reports height
-automatically, so most widgets never call `reportResize()` at all. Call it only to override that —
-for a deliberately fixed height, or when your real content sits in an absolutely-positioned element
-that `document.body` doesn't measure.
+**About your widget's size.** The host decides it, not you. Your widget is embedded in a
+fixed-size area, and if your content is taller, your own page scrolls inside it — exactly like any
+other embedded iframe. You don't have to do anything, or report anything, to get that.
+
+How large that area is depends on where your widget runs: on the Dashboard it is currently around
+350×294 CSS pixels; in a room it is the size of the attachment pane, which varies with the window.
+Three things follow from this:
+
+- **Design responsively.** Treat those numbers as today's state, not a promise.
+- **Don't switch off your own scrolling.** `body { overflow: hidden }` without a scrollable area of
+  your own makes content unreachable that would otherwise simply scroll.
+- **`height: 100%` and `100vh` work** as you'd expect — your widget has a real viewport.
+
+`init()` still starts a `ResizeObserver` on `document.body` and reports the height; the host just no
+longer uses it for layout. Earlier SDK versions were written against a host that grew the iframe to
+the reported height — that is no longer the case.
 
 **Handling a failed init.** `init()` rejects rather than hanging forever, so wrap it:
 
@@ -904,8 +929,11 @@ window.addEventListener('message', (event) => {
 });
 ```
 
-**Report your content height whenever it changes** (or the host defaults to a small fixed size):
+**You don't need to manage your size.** The host gives your page a fixed-size area to live in, and
+your page scrolls inside it normally. The `resize` message is still part of the protocol and is
+accepted, but ignored — you don't have to send it:
 ```js
+// Optional, and has no effect on layout:
 window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'resize', height: document.body.scrollHeight }, hostOrigin);
 ```
 

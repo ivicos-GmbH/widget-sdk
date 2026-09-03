@@ -103,9 +103,9 @@ async function main(): Promise<void> {
         sdk.destroy();
     });
 
-    // Height is reported automatically via a ResizeObserver on document.body, so there is
-    // normally no reportResize() call here. Use it only to override that - for a deliberately
-    // fixed height, or when your content sits in an element document.body doesn't measure.
+    // No sizing code here on purpose: the host gives this widget a fixed-size area and lets
+    // this page scroll inside it. The SDK still reports a height and reportResize() still exists,
+    // but the host ignores both - see "About your widget's size" in the README.
 }
 
 function startPolling(): void {}
