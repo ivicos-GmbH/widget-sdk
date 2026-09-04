@@ -273,6 +273,7 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 | Methode | Rückgabe | Hinweise |
 |---|---|---|
 | `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt ab, wenn der Host den Handshake nicht innerhalb von 10 s abschließt oder danach nicht innerhalb von weiteren 10 s den ersten Kontext sendet. Ein zweiter Aufruf wirft. |
+| `init({ backFace: true })` | | Teilt dem Host mit, dass dieses Widget zusätzlich eine Rückseite unter `<deine iframe-URL>/backside` bereitstellt, damit er die Umdrehen-Schaltfläche anbietet. |
 | `getContext()` | `WidgetContext \| null` | Der zuletzt empfangene Kontext. `null`, bis `init()` sich auflöst — nimm bevorzugt den Wert aus `init()`. |
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
@@ -311,6 +312,94 @@ try {
     document.body.textContent = 'Diese Seite läuft als ivCampus-Widget.';
 }
 ```
+
+### Die Rückseite
+
+Eine Widget-Karte im Dashboard lässt sich umdrehen. Vorne steht dein Widget. Hinten erklärst du es
+— was es tut, wie man es benutzt, was deine Filter bedeuten, Links zu deiner eigenen
+Dokumentation.
+
+Liefere sie unter `/backside` aus, relativ zu der URL, die du registriert hast:
+
+```
+registrierte iframe-URL   https://example.com/my-widget
+deine Rückseite           https://example.com/my-widget/backside
+```
+
+Und teile dem Host von der **Vorderseite** aus mit, dass es sie gibt:
+
+```ts
+const sdk = new WidgetSDK();
+const context = await sdk.init({ widgetId: 'my-widget', backFace: true });
+```
+
+Ohne `backFace: true` erscheint nie eine Umdrehen-Schaltfläche — ein bestehendes Widget bleibt
+also unberührt, bis es sich aktiv dafür entscheidet. Setzt du die Option, lieferst aber kein
+`/backside` aus, sehen deine Nutzer auf der Rückseite deine 404-Seite; der Host kann das nicht
+erkennen.
+
+**Die Rückseite braucht dieses SDK nicht.** Eine statische HTML-Datei genügt. Willst du dort
+ebenfalls Theme, Sprache oder den Namen der betrachtenden Person, rufe auch dort `init()` auf —
+sie erhält denselben Kontext wie die Vorderseite.
+
+**Die Anmeldung gehört nicht auf die Rückseite.** Lässt sich dein Widget ohne Konto nicht nutzen,
+zeige deine Anmeldung auf der **Vorderseite** — das ist das Erste, was man sieht, und nach der
+Anmeldung wird daraus dein Widget. Du darfst auch die Rückseite einer Anmeldung vorbehalten, es
+ist deine Seite. Mach sie aber nie zum einzigen Weg hinein: Niemand hat einen Grund, dort zu
+suchen.
+
+**Was auf die Rückseite gehört:** Hinweise zur Nutzung, was dein Widget tut, Links zu deiner
+Dokumentation oder deinem Support, optional eine Abmelden-Schaltfläche oder Einstellungen deines
+Widgets.
+
+**Was nicht:** deine eigentlichen Inhalte, alles, was man zum *Benutzen* des Widgets braucht, und
+alles, was voraussetzt, gerade sichtbar zu sein. Der Host schickt beim Umdrehen an jede Seite ein
+`visibility-change` — pausiere also dein Polling, wenn du weggedreht bist.
+
+**Größe:** In einer Dashboard-Karte stehen der Rückseite etwa **294px** Höhe zur Verfügung (eine
+350×350-Karte abzüglich ihrer 56px hohen Kopfzeile). Das reicht für einen Hinweistext und ein,
+zwei Links. Für ein mehrstufiges Formular reicht es nicht.
+
+### Zustand zwischen deinen beiden Seiten teilen
+
+Deine Vorder- und Rückseite sind zwei getrennte Dokumente in zwei getrennten iframes — nicht zwei
+Ansichten eines laufenden Skripts. Nichts im Arbeitsspeicher überträgt sich zwischen ihnen; nur
+was diese Grenze tatsächlich überquert, tut das.
+
+Brauchst du einen Zustand, auf den sich beide Seiten einigen — meistens „ist dieser Nutzer
+angemeldet" — ist Speicher auf deiner eigenen Origin der Weg dorthin: deine Rückseite liegt
+konstruktionsbedingt unter `/backside` auf derselben Origin wie deine Vorderseite, also ist
+`localStorage` (oder ein Cookie), das eine Seite schreibt, für die andere sichtbar.
+
+Zwei Dinge stolpern hier häufig:
+
+**Einmaliges Lesen beim Laden reicht nicht.** Die Rückseite bleibt nach dem ersten Umdrehen
+gemountet — sie wird nicht bei jedem Umdrehen neu erzeugt. Meldet sich der Nutzer also auf einer
+Seite ab, während die andere noch offen ist, bemerkt diese es nicht, solange sie nicht zuhört.
+Gleichen-Ursprungs-Geschwisterdokumente erhalten ein natives `storage`-Ereignis, sobald eines von
+ihnen `localStorage` ändert — höre darauf, um live zu reagieren:
+
+```ts
+window.addEventListener('storage', (event) => {
+    if (event.key === 'my-widget-signed-in') {
+        // reagiere auf die Änderung der ANDEREN Seite - eigene Schreibvorgänge lösen dieses
+        // Ereignis bei dir selbst nicht aus
+    }
+});
+```
+
+**Dein Widget ist auf einer fremden Seite eingebettet, sein Speicher kann also partitioniert oder
+blockiert sein.** Browser schränken Speicher für ein iframe, dessen Top-Level-Seite eine andere
+Site ist als die Origin des iframes, zunehmend ein — das trifft auf jedes Widget hier zu. Verhält
+sich `localStorage` nicht wie erwartet, ist die standardbasierte Lösung die [Storage Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_Access_API):
+`document.requestStorageAccess()`, aufgerufen aus einer echten Nutzerinteraktion (ein Klick, ein
+Formular-Submit) — das iframe des Hosts trägt bereits das dafür nötige
+`allow-storage-access-by-user-activation`-Sandbox-Token.
+
+Nichts davon läuft über den Host. Der Host sieht, speichert oder leitet niemals etwas über den
+Anmeldestatus deines Widgets weiter — er gibt dir nur das Umdrehen und die
+`visibility-change`-Nachricht.
 
 ### Hosting-Anforderungen
 
@@ -366,9 +455,14 @@ deine Seite behält also ihre eigene Origin statt einer opaken — aber es ist e
 als der, den dieselbe Seite nutzt, wenn jemand deine Website direkt besucht. Zustand wird nicht
 übernommen, und dauerhaft ist er auch nicht.
 
-**Die Storage Access API ist kein Ausweg.** Die Sandbox des Hosts enthält
-`allow-storage-access-by-user-activation` nicht, `document.requestStorageAccess()` steht Widgets
-also nicht zur Verfügung. Entwirf für partitionierten Speicher, statt dich herausbitten zu wollen.
+**Die Storage Access API schränkt das ein, hebt es aber nicht auf.** Das Iframe des Hosts trägt das
+`allow-storage-access-by-user-activation`-Sandbox-Token, `document.requestStorageAccess()` steht
+Widgets also zur Verfügung — aber nur aus einer echten Nutzerinteraktion heraus (ein Klick, ein
+Formular-Submit), und nur in Browsern, die die API überhaupt implementieren. Entwirf standardmäßig
+für partitionierten Speicher; behandle eine gewährte Anfrage als etwas, das du dir nach einem Klick
+zurückholst, nicht als etwas, das schon beim ersten gerenderten Frame deines Widgets vorhanden ist.
+Das konkrete Muster dafür steht oben unter [Zustand zwischen deinen beiden Seiten
+teilen](#zustand-zwischen-deinen-beiden-seiten-teilen).
 
 **Ein interaktiver Login im Widget ist bewusst schwierig.** `allow-popups` wird nicht gewährt,
 `window.open` ist also blockiert; `allow-top-navigation` ebenso wenig, du kannst die übergeordnete
@@ -391,10 +485,12 @@ Box. Die vollständigen Message-Formen:
 **Beim Laden senden:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // oder SDK_VERSION importieren
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2, hasBackFace: true },  // oder SDK_VERSION importieren
     '*' // hier unvermeidbar - du kennst die Origin des Hosts noch nicht, und diese Nachricht enthält keine Geheimnisse
 );
 ```
+
+Das Feld `hasBackFace` ist optional und wird weggelassen, wenn das Widget keine Rückseite bereitstellt. Setzt du es auf `true`, lädt der Host die Rückseite von `<iframeUrl>/backside` — dabei bleiben Query-String und Hash erhalten.
 
 **Auf die Antwort des Hosts warten und dessen Origin ab der ersten akzeptierten Nachricht fixieren:**
 ```js
@@ -496,8 +592,12 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
 
 ### Sicherheitsmodell
 
-- Läuft innerhalb eines `sandbox="allow-scripts allow-forms allow-same-origin"`-Iframes, den der Host
-  kontrolliert. Insbesondere **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
+- Läuft innerhalb eines `sandbox="allow-scripts allow-forms allow-same-origin
+  allow-storage-access-by-user-activation"`-Iframes, den der Host kontrolliert. Das letzte Token
+  erlaubt lediglich, dass dein Widget `document.requestStorageAccess()` aus einer echten
+  Nutzerinteraktion heraus aufrufen darf (siehe [Zustand zwischen deinen beiden Seiten
+  teilen](#zustand-zwischen-deinen-beiden-seiten-teilen)) — es gewährt sonst nichts zusätzlich.
+  Insbesondere weiterhin **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
   der übergeordneten Seite und kein Zugriff auf ivCampus-Cookies/localStorage/DOM außerhalb deines eigenen
   Iframes.
 - Erhält niemals die echten ivCampus-Zugangsdaten der Endnutzerin/des Endnutzers, in keiner Form.
@@ -790,6 +890,7 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 | Method | Returns | Notes |
 |---|---|---|
 | `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects if the host fails to complete the handshake within 10s, or fails to follow it with a first context within a further 10s. Calling it twice throws. |
+| `init({ backFace: true })` | | Tells the host this widget also serves a back face at `<your iframe URL>/backside`, so it offers the flip control. |
 | `getContext()` | `WidgetContext \| null` | The most recently received context. `null` until `init()` resolves — prefer the value `init()` gives you. |
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
@@ -828,6 +929,88 @@ try {
     document.body.textContent = 'This page runs as an ivCampus widget.';
 }
 ```
+
+### The back face
+
+A widget card in the dashboard can flip over. The front is your widget. The back is where you
+explain it — what it does, how to use it, what your filters mean, links to your own docs.
+
+Serve it at `/backside`, relative to the URL you registered:
+
+```
+registered iframe URL   https://example.com/my-widget
+your back face          https://example.com/my-widget/backside
+```
+
+Then tell the host it exists, from the **front** page:
+
+```ts
+const sdk = new WidgetSDK();
+const context = await sdk.init({ widgetId: 'my-widget', backFace: true });
+```
+
+Without `backFace: true` no flip control ever appears, so an existing widget is unaffected until
+it opts in. If you set it but do not serve `/backside`, users will see your 404 page on the back
+of the card — the host has no way to detect that.
+
+**The back page does not need this SDK.** A static HTML file is fine. If you want the theme,
+locale or the viewer's name there too, call `init()` from it as well and it receives the same
+context the front does.
+
+**Sign-in does not belong on the back face.** If your widget cannot be used without an account,
+show your sign-in on the **front** — that is the first thing a user sees, and signing in there
+turns the front into your widget. You are free to require a session on the back face as well; it
+is your page. But never make the back face the only way in, because a user has no reason to look
+there.
+
+**What belongs on the back:** guidelines and usage notes, what your widget does, links to your
+documentation or support, optionally a sign-*out* control or widget-specific settings.
+
+**What does not:** your primary content, anything a user needs in order to *use* the widget, and
+anything that assumes it is currently on screen. The host sends `visibility-change` to each face
+as the card turns, so pause polling when you are flipped away.
+
+**Size:** in a dashboard card the back face gets roughly **294px** of height (a 350×350 card less
+its 56px header). That fits a block of guidance and a link or two. It does not fit a multi-step
+form.
+
+### Sharing state between your two faces
+
+Your front and back pages are two separate documents in two separate iframes - not two views of
+one running script. Nothing in memory carries over between them; only something that actually
+crosses that boundary does.
+
+If you need state both faces agree on - most commonly "is this user signed in" - storage on your
+own origin is the way to do it: your back face lives at `/backside` on the same origin as your
+front by construction, so `localStorage` (or a cookie) written by one face is visible to the
+other.
+
+Two things trip people up here:
+
+**Reading it once at load isn't enough.** The back face stays mounted after the first flip - it
+is not re-created on every flip - so if the user signs out on one face while the other is still
+open, that other face won't notice unless it's listening. Same-origin sibling documents get a
+native `storage` event whenever one of them changes `localStorage` - listen for it to react live:
+
+```ts
+window.addEventListener('storage', (event) => {
+    if (event.key === 'my-widget-signed-in') {
+        // react to the *other* face's change - your own writes don't fire this event on you
+    }
+});
+```
+
+**Your widget is embedded on someone else's page, so its storage may be partitioned or blocked.**
+Browsers increasingly restrict storage for an iframe whose top-level page is a different site than
+the iframe's own origin - which describes every widget here. If `localStorage` isn't behaving the
+way you expect, the standards-based fix is the [Storage Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_Access_API):
+`document.requestStorageAccess()`, called from a real user gesture (a click, a form submit) - the
+host's iframe already carries the `allow-storage-access-by-user-activation` sandbox token needed
+for it to work.
+
+None of this is host-mediated. The host never sees, stores or forwards anything about your
+widget's own sign-in state - it only ever gives you the flip and the `visibility-change` message.
 
 ### Hosting requirements
 
@@ -879,9 +1062,13 @@ does get real storage — the host grants `allow-same-origin`, so your page keep
 rather than an opaque one — but it is a *separate bucket* from the one the same page uses when
 someone visits your site directly. State does not carry across, and it isn't durable.
 
-**The Storage Access API is not an escape hatch.** The host's sandbox does not include
-`allow-storage-access-by-user-activation`, so `document.requestStorageAccess()` is unavailable to
-widgets. Design for partitioned storage rather than planning to request your way out of it.
+**The Storage Access API narrows this, but doesn't remove it.** The host's iframe carries the
+`allow-storage-access-by-user-activation` sandbox token, so `document.requestStorageAccess()` is
+available to widgets — but only from a real user gesture (a click, a form submit), and only in
+browsers that implement the API at all. Design for partitioned storage as the default case; treat a
+granted request as something you win back after a click, not something present before your widget
+renders its first frame. See [Sharing state between your two faces](#sharing-state-between-your-two-faces)
+above for the concrete pattern.
 
 **Interactive login inside a widget is hard, by design.** `allow-popups` is not granted, so
 `window.open` is blocked; `allow-top-navigation` is not granted either, so you can't redirect the
@@ -904,10 +1091,12 @@ message shapes:
 **On load, send:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // or import SDK_VERSION
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2, hasBackFace: true },  // or import SDK_VERSION
     '*' // unavoidable here - you don't know the host's origin yet, and this message carries no secrets
 );
 ```
+
+The `hasBackFace` field is optional and omitted entirely when the widget serves no back face. Set it to `true` and the host loads the back face from `<iframeUrl>/backside`, preserving any query string and hash.
 
 **Listen for the host's reply, and pin its origin from the first accepted message:**
 ```js
@@ -1007,9 +1196,13 @@ Test your widget against a real host before submitting, rather than debugging bl
 
 ### Security model
 
-- Runs inside a `sandbox="allow-scripts allow-forms allow-same-origin"` iframe the host
-  controls. Notably **not** granted: popups (`window.open` is blocked), top-level navigation of
-  the parent page, and no access to any ivCampus cookie/localStorage/DOM outside your own iframe.
+- Runs inside a `sandbox="allow-scripts allow-forms allow-same-origin
+  allow-storage-access-by-user-activation"` iframe the host controls. That last token only lets
+  your widget call `document.requestStorageAccess()` from a real user gesture (see
+  [Sharing state between your two faces](#sharing-state-between-your-two-faces)) — it grants
+  nothing else. Still notably **not** granted: popups (`window.open` is blocked), top-level
+  navigation of the parent page, and no access to any ivCampus cookie/localStorage/DOM outside
+  your own iframe.
 - Never receives the end user's real ivCampus credentials, in any form.
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)
