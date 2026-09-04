@@ -455,9 +455,14 @@ deine Seite behält also ihre eigene Origin statt einer opaken — aber es ist e
 als der, den dieselbe Seite nutzt, wenn jemand deine Website direkt besucht. Zustand wird nicht
 übernommen, und dauerhaft ist er auch nicht.
 
-**Die Storage Access API ist kein Ausweg.** Die Sandbox des Hosts enthält
-`allow-storage-access-by-user-activation` nicht, `document.requestStorageAccess()` steht Widgets
-also nicht zur Verfügung. Entwirf für partitionierten Speicher, statt dich herausbitten zu wollen.
+**Die Storage Access API schränkt das ein, hebt es aber nicht auf.** Das Iframe des Hosts trägt das
+`allow-storage-access-by-user-activation`-Sandbox-Token, `document.requestStorageAccess()` steht
+Widgets also zur Verfügung — aber nur aus einer echten Nutzerinteraktion heraus (ein Klick, ein
+Formular-Submit), und nur in Browsern, die die API überhaupt implementieren. Entwirf standardmäßig
+für partitionierten Speicher; behandle eine gewährte Anfrage als etwas, das du dir nach einem Klick
+zurückholst, nicht als etwas, das schon beim ersten gerenderten Frame deines Widgets vorhanden ist.
+Das konkrete Muster dafür steht oben unter [Zustand zwischen deinen beiden Seiten
+teilen](#zustand-zwischen-deinen-beiden-seiten-teilen).
 
 **Ein interaktiver Login im Widget ist bewusst schwierig.** `allow-popups` wird nicht gewährt,
 `window.open` ist also blockiert; `allow-top-navigation` ebenso wenig, du kannst die übergeordnete
@@ -587,8 +592,12 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
 
 ### Sicherheitsmodell
 
-- Läuft innerhalb eines `sandbox="allow-scripts allow-forms allow-same-origin"`-Iframes, den der Host
-  kontrolliert. Insbesondere **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
+- Läuft innerhalb eines `sandbox="allow-scripts allow-forms allow-same-origin
+  allow-storage-access-by-user-activation"`-Iframes, den der Host kontrolliert. Das letzte Token
+  erlaubt lediglich, dass dein Widget `document.requestStorageAccess()` aus einer echten
+  Nutzerinteraktion heraus aufrufen darf (siehe [Zustand zwischen deinen beiden Seiten
+  teilen](#zustand-zwischen-deinen-beiden-seiten-teilen)) — es gewährt sonst nichts zusätzlich.
+  Insbesondere weiterhin **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
   der übergeordneten Seite und kein Zugriff auf ivCampus-Cookies/localStorage/DOM außerhalb deines eigenen
   Iframes.
 - Erhält niemals die echten ivCampus-Zugangsdaten der Endnutzerin/des Endnutzers, in keiner Form.
@@ -1053,9 +1062,13 @@ does get real storage — the host grants `allow-same-origin`, so your page keep
 rather than an opaque one — but it is a *separate bucket* from the one the same page uses when
 someone visits your site directly. State does not carry across, and it isn't durable.
 
-**The Storage Access API is not an escape hatch.** The host's sandbox does not include
-`allow-storage-access-by-user-activation`, so `document.requestStorageAccess()` is unavailable to
-widgets. Design for partitioned storage rather than planning to request your way out of it.
+**The Storage Access API narrows this, but doesn't remove it.** The host's iframe carries the
+`allow-storage-access-by-user-activation` sandbox token, so `document.requestStorageAccess()` is
+available to widgets — but only from a real user gesture (a click, a form submit), and only in
+browsers that implement the API at all. Design for partitioned storage as the default case; treat a
+granted request as something you win back after a click, not something present before your widget
+renders its first frame. See [Sharing state between your two faces](#sharing-state-between-your-two-faces)
+above for the concrete pattern.
 
 **Interactive login inside a widget is hard, by design.** `allow-popups` is not granted, so
 `window.open` is blocked; `allow-top-navigation` is not granted either, so you can't redirect the
@@ -1183,9 +1196,13 @@ Test your widget against a real host before submitting, rather than debugging bl
 
 ### Security model
 
-- Runs inside a `sandbox="allow-scripts allow-forms allow-same-origin"` iframe the host
-  controls. Notably **not** granted: popups (`window.open` is blocked), top-level navigation of
-  the parent page, and no access to any ivCampus cookie/localStorage/DOM outside your own iframe.
+- Runs inside a `sandbox="allow-scripts allow-forms allow-same-origin
+  allow-storage-access-by-user-activation"` iframe the host controls. That last token only lets
+  your widget call `document.requestStorageAccess()` from a real user gesture (see
+  [Sharing state between your two faces](#sharing-state-between-your-two-faces)) — it grants
+  nothing else. Still notably **not** granted: popups (`window.open` is blocked), top-level
+  navigation of the parent page, and no access to any ivCampus cookie/localStorage/DOM outside
+  your own iframe.
 - Never receives the end user's real ivCampus credentials, in any form.
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)
