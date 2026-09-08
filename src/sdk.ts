@@ -1,5 +1,6 @@
 import {
     SDK_VERSION,
+    type DisplayMode,
     type HostToWidgetMessage,
     type InitOptions,
     type OpenUrlStatus,
@@ -33,6 +34,8 @@ export class WidgetSDK {
     private hostOrigin: string | null = null;
 
     private context: WidgetContext | null = null;
+
+    private displayMode: DisplayMode = 'default';
 
     private handshakeComplete = false;
 
@@ -119,7 +122,8 @@ export class WidgetSDK {
             type: 'ready',
             widgetId: this.widgetId,
             sdkVersion: SDK_VERSION,
-            ...(options.backFace === true ? { hasBackFace: true } : {})
+            ...(options.backFace === true ? { hasBackFace: true } : {}),
+            ...(options.displayModes ? { displayModes: options.displayModes } : {})
         });
 
         await this.waitForHandshake();
@@ -133,6 +137,20 @@ export class WidgetSDK {
     /** The most recently received context. `null` until `init()` resolves. */
     public getContext(): WidgetContext | null {
         return this.context;
+    }
+
+    /**
+     * Whether this placement offers a choice at all. Read from the host's context, never from
+     * what the widget announced - the widget knowing how to render 'expanded' says nothing
+     * about whether there is room for it here. Show your own UI only when this is true.
+     */
+    public supportsDisplayModes(): boolean {
+        return (this.context?.displayModes?.length ?? 0) > 1;
+    }
+
+    /** The mode the host last confirmed. 'default' until it says otherwise. */
+    public getDisplayMode(): DisplayMode {
+        return this.displayMode;
     }
 
     public onContextChange(listener: (context: WidgetContext) => void): () => void {

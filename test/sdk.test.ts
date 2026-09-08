@@ -475,4 +475,74 @@ describe('WidgetSDK', () => {
         expect(answer.mode).toBe('default');
         expect(future).toBe('theatre');
     });
+
+    it('announces displayModes on the ready message when asked to', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const ready = sentMessages(parent).find((m) => m.type === 'ready');
+        expect(ready).toMatchObject({ displayModes: ['default', 'expanded'] });
+    });
+
+    it('omits displayModes entirely when the widget does not announce any', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const ready = sentMessages(parent).find((m) => m.type === 'ready');
+        // Absent, not present-and-undefined: a widget that never opted in must send a message
+        // byte-identical to what every pre-display-mode widget already sends.
+        expect(ready && 'displayModes' in ready).toBe(false);
+    });
+
+    it('reports supportsDisplayModes from the context, not from what the widget announced', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent, {
+            theme: 'light',
+            locale: 'en',
+            campusId: 'campus-1',
+            displayName: 'Ada'
+        });
+        await initPromise;
+
+        // The widget can render two modes, but this placement offered none - so there is nothing
+        // to switch between and no control should be shown.
+        expect(sdk.supportsDisplayModes()).toBe(false);
+        expect(sdk.getDisplayMode()).toBe('default');
+    });
+
+    it('reports supportsDisplayModes once a placement offers more than one mode', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent, {
+            theme: 'light',
+            locale: 'en',
+            campusId: 'campus-1',
+            displayName: 'Ada',
+            displayModes: ['default', 'expanded']
+        });
+        await initPromise;
+
+        expect(sdk.supportsDisplayModes()).toBe(true);
+    });
+
+    it('lets a host withdraw the offer on a later context', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent, {
+            theme: 'light',
+            locale: 'en',
+            campusId: 'campus-1',
+            displayName: 'Ada',
+            displayModes: ['default', 'expanded']
+        });
+        await initPromise;
+
+        emitFromHost(parent, {
+            source: 'ivicos-widget-host',
+            type: 'context',
+            context: { theme: 'light', locale: 'en', campusId: 'campus-1', displayName: 'Ada' }
+        });
+
+        expect(sdk.supportsDisplayModes()).toBe(false);
+    });
 });
