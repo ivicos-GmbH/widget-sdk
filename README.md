@@ -18,6 +18,10 @@ Kontext, Größenanpassung und den RPC-Transport zwischen deiner Seite und dem H
 Dieses Dokument ist der Leitfaden für externe Entwickler:innen: Was ein Widget kann und nicht kann,
 wie du eines baust und wie du es auf einer echten ivCampus-Organisation live bekommst.
 
+### Ein wichtiger Tipp vorab
+
+Diese Anleitung ist ausführlich, doch Coding-KI kann sie schnell lesen, verstehen und rasch einen Proof of Concept bauen. So kannst du erst einmal ausprobieren, wie dein Widget im ivCAMPUS nutzen stiften kann ohne gleich selber aktiv zu werden. Gib der KI den Link dieser Seite, sag ihr, welche Funktion dein Widget erfüllen soll (z.B. alle dir zugewiesenen Aufgaben anzeigen und auf der Widget-Rückseite z.B. die Sortierung nach Priorität oder Erstellungsdatum verändern) und bitte die KI dir alle für die Einreichung des Widgets erforderlichen Daten mit einem Copy-Button aufzulisten. So ist dein Aufwand minimal (Erfahrungsgemäß 5 Minuten - 2 für den Prompt und 3 für das Einreichen und Ausprobieren) 
+
 ### Status — Bitte dies zuerst lesen
 
 Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konkret:
@@ -36,9 +40,8 @@ Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konk
   normalen Zustand, nicht als Absturz. Auf diese Weise können wir dem Nutzer ein störungsfreies Erlebnis bieten, auch, wenn mal an einer Stelle etwas nicht funktioniert.
 - Das SDK wird über **GitHub Packages** veröffentlicht, nicht über die öffentliche npm-Registry — siehe
   [Installation](#installation).
-
 Nichts davon ist ein Bug, den man umgehen sollte; entwickle bitte einfach gegen das, was tatsächlich vorhanden ist. Du wirst sehen, dass das sinnvoll ist und für die Nutzer passend.
-
+  
 ### Installation
 
 Veröffentlicht über [GitHub Packages](https://github.com/features/packages) (npm-kompatibel), nicht über
@@ -432,17 +435,18 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Feld | Einschränkung |
    |---|---|
    | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
-   | Name | Freitext, nur zur Anzeige |
-   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) — wird aktuell gegen nichts geprüft, braucht nur diese Form |
+   | Name | Freitext, zur Anzeige in des Widgetnamens in der Übersicht der Integrationen |
+   | Website-URL | Ein Link auf eine Webseite, die deine App und/oder dein Widget erklärt (ggf. auch deine Homepage) |
+   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) — wird aktuell gegen nichts geprüft, braucht nur dieses Format |
    | Widget-URL | deine HTTPS-Iframe-URL |
-   | Icon-URL | jede erreichbare URL, wird nicht als tatsächliches Bild validiert |
-   | Beschreibung | Freitext |
+   | Icon-URL | jede erreichbare URL, wird nicht als tatsächliches Bild validiert - bitte verantwortungsvoll nutzen|
+   | Beschreibung | Freitext, der beim Hover angezeigt wird und die Funktion des Widgets erklärt |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
 
-2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
+3. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
    kann von niemandem aktiviert oder genutzt werden, bevor sie geprüft wurde.
 
-3. Verfolge sie auf demselben Screen unter **Deine Einreichungen**, wo der aktuelle Status steht:
+4. Verfolge sie auf demselben Screen unter **Deine Einreichungen**, wo der aktuelle Status steht:
 
    | Status | Bedeutung |
    |---|---|
@@ -454,7 +458,7 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    auf diesem Screen nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu) nach, wenn du
    schon länger wartest.
 
-4. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
+5. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
    Icon, Beschreibung, Placements) oder ganz zurückziehen. Die Ausnahme ist die Widget-ID: Sie liegt
    fest, und eine andere ID ist ein anderes Widget.
 
@@ -521,6 +525,10 @@ transport between your page and the host.
 
 This document is the complete guide for external developers: what a widget can and can't do,
 how to build one, and how to get it live on a real ivCampus org.
+
+### An important tip before you begin
+
+This guide is detailed, but Coding-AI can read and understand it quickly and build a proof of concept in no time. This way, you can first test how your widget can be useful in ivCAMPUS without having to take action yourself right away. Give the AI the link to this page, tell it what function your widget should perform (e.g., display all tasks assigned to you and, on the widget’s back page, allow sorting by priority or creation date), and ask the AI to list all the data required to submit the widget using a “Copy” button. This way, your effort is minimal (based on experience, 5 minutes—2 for the prompt and 3 for submitting and testing). 
 
 ### Status — please read this first
 
@@ -926,13 +934,16 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 
    | Field | Constraint |
    |---|---|
-   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
-   | Name | free text, purely for display |
-   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) — not currently checked against anything, just needs the shape |
-   | Widget URL | your HTTPS iframe URL |
-   | Icon URL | any reachable URL, not validated as an actual image |
-   | Description | free text |
-   | Placement | Room, Personal dashboard, or both — at least one is required |
+   | Widget ID | Lowercase letters, numbers, and hyphens only; must be unique across the entire registry and **cannot be changed after submission** |
+   | Name | Free text, to be displayed as the widget name in the integrations overview |
+   | Website URL | A link to a webpage that explains your app and/or widget (possibly also your homepage) |
+   | Version | Must be in the format `X.Y.Z` (e.g., `1.0.0`) — currently not validated against anything; only this format is required |
+   | Widget URL | Your HTTPS iframe URL |
+   | Icon URL | Any accessible URL; not validated as an actual image—please use responsibly |
+   | Description | Free text that appears on hover and explains the widget’s function |
+   | Placement | Room, Personal Dashboard, or both—at least one is required |
+
+Translated with DeepL.com (free version)
 
 2. The submission is immediately visible to the sponsoring org and to no one else. It can't be
    enabled or used by anyone until it has been reviewed.
