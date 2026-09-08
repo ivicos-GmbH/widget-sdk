@@ -25,6 +25,13 @@ export interface WidgetContext {
         name: string;
         type: 'personal' | 'common';
     };
+    /**
+     * Modes THIS placement offers, which is not the same question as which modes the widget
+     * can render. Absent, or holding fewer than two entries, means there is nothing to
+     * switch between here. Every context message is authoritative: a host may withdraw the
+     * offer, for instance when the widget moves to a placement with no room to grow.
+     */
+    displayModes?: DisplayMode[];
 }
 
 export interface InitOptions {
@@ -36,6 +43,13 @@ export interface InitOptions {
      * ever appears. The back page itself does not need this SDK.
      */
     backFace?: boolean;
+    /**
+     * Modes this widget can actually render. Announce nothing and the host offers no
+     * control - the same rule `backFace` follows. Announcing 'expanded' is a claim that
+     * your layout uses the extra room; a widget that looks identical at both sizes should
+     * not announce it.
+     */
+    displayModes?: DisplayMode[];
 }
 
 /**
@@ -50,16 +64,42 @@ export interface InitOptions {
  */
 export type OpenUrlStatus = 'opened' | 'blocked' | 'denied';
 
+/**
+ * How much room the host is giving this widget. 'default' is the placement's normal size;
+ * 'expanded' is deliberately not given a pixel meaning here - the host decides, and it
+ * differs by placement.
+ *
+ * The open member is not an accident. A closed union would make a third mode a breaking
+ * type change for every widget already compiled against this package. `WidgetContext.status`
+ * is a plain string for exactly the same reason.
+ */
+// `string & {}` is the only way to keep the two literals autocompleting while leaving the union
+// open; plain `string` would swallow them.
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type DisplayMode = 'default' | 'expanded' | (string & {});
+
 /** Internal message envelope exchanged over postMessage between host and widget iframe. */
 export type HostToWidgetMessage =
     | { source: 'ivicos-widget-host'; type: 'handshake'; nonce: string }
     | { source: 'ivicos-widget-host'; type: 'context'; context: WidgetContext }
     | { source: 'ivicos-widget-host'; type: 'visibility-change'; visible: boolean }
     | { source: 'ivicos-widget-host'; type: 'session-ending' }
-    | { source: 'ivicos-widget-host'; type: 'open-url-result'; requestId: string; status: OpenUrlStatus };
+    | { source: 'ivicos-widget-host'; type: 'open-url-result'; requestId: string; status: OpenUrlStatus }
+    | { source: 'ivicos-widget-host'; type: 'display-mode'; mode: DisplayMode };
 
 export type WidgetToHostMessage =
-    | { source: 'ivicos-widget-sdk'; type: 'ready'; widgetId: string; sdkVersion: number; hasBackFace?: boolean }
+    | {
+          source: 'ivicos-widget-sdk';
+          type: 'ready';
+          widgetId: string;
+          sdkVersion: number;
+          hasBackFace?: boolean;
+          displayModes?: DisplayMode[];
+      }
     | { source: 'ivicos-widget-sdk'; type: 'handshake-ack'; nonce: string }
     | { source: 'ivicos-widget-sdk'; type: 'resize'; height: number }
-    | { source: 'ivicos-widget-sdk'; type: 'open-url'; requestId: string; url: string };
+    | { source: 'ivicos-widget-sdk'; type: 'open-url'; requestId: string; url: string }
+    // A request, not an instruction. The host answers every one of these, refusals included -
+    // a widget that heard nothing back could not tell "refused" from "this host is too old to
+    // understand the message".
+    | { source: 'ivicos-widget-sdk'; type: 'display-mode-request'; mode: DisplayMode };

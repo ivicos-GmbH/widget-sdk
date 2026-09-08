@@ -1,5 +1,6 @@
 import {
     SDK_VERSION,
+    type DisplayMode,
     type HostToWidgetMessage,
     type InitOptions,
     type OpenUrlStatus,
@@ -34,6 +35,8 @@ export class WidgetSDK {
 
     private context: WidgetContext | null = null;
 
+    private displayMode: DisplayMode = 'default';
+
     private handshakeComplete = false;
 
     private handshakeResolve: (() => void) | null = null;
@@ -49,6 +52,8 @@ export class WidgetSDK {
     private lastReportedHeight: number | null = null;
 
     private openUrlResolvers = new Map<string, (status: OpenUrlStatus) => void>();
+
+    private displayModeListeners = new Set<(mode: DisplayMode) => void>();
 
     private onMessage = (event: MessageEvent): void => {
         if (event.source !== window.parent) return;
@@ -93,6 +98,15 @@ export class WidgetSDK {
                 resolve(message.status);
                 break;
             }
+            case 'display-mode': {
+                // Notified unconditionally, NOT only on a change of value. An answer repeating
+                // the current mode is a refusal - the widget asked to expand and did not get
+                // it - and a widget that never hears the refusal waits forever for an answer
+                // that already came.
+                this.displayMode = message.mode;
+                [...this.displayModeListeners].forEach((listener) => listener(message.mode));
+                break;
+            }
         }
     };
 
@@ -119,7 +133,8 @@ export class WidgetSDK {
             type: 'ready',
             widgetId: this.widgetId,
             sdkVersion: SDK_VERSION,
-            ...(options.backFace === true ? { hasBackFace: true } : {})
+            ...(options.backFace === true ? { hasBackFace: true } : {}),
+            ...(options.displayModes ? { displayModes: options.displayModes } : {})
         });
 
         await this.waitForHandshake();
@@ -133,6 +148,20 @@ export class WidgetSDK {
     /** The most recently received context. `null` until `init()` resolves. */
     public getContext(): WidgetContext | null {
         return this.context;
+    }
+
+    /**
+     * Whether this placement offers a choice at all. Read from the host's context, never from
+     * what the widget announced - the widget knowing how to render 'expanded' says nothing
+     * about whether there is room for it here. Show your own UI only when this is true.
+     */
+    public supportsDisplayModes(): boolean {
+        return (this.context?.displayModes?.length ?? 0) > 1;
+    }
+
+    /** The mode the host last confirmed. 'default' until it says otherwise. */
+    public getDisplayMode(): DisplayMode {
+        return this.displayMode;
     }
 
     public onContextChange(listener: (context: WidgetContext) => void): () => void {
@@ -199,6 +228,35 @@ export class WidgetSDK {
         });
     }
 
+    /**
+     * Asks the host for a display mode. A request is a request: the host decides, and may
+     * refuse, or grant it now and take it back a moment later. Nothing changes until
+     * `onDisplayModeChange` fires - re-lay out there, never in the click handler.
+     *
+     * You do not need this to offer enlargement: the host renders the control itself, and
+     * you should not render a second one. Use this only to expand in response to something
+     * the user did inside your widget.
+     */
+    public requestDisplayMode(mode: DisplayMode): void {
+        // Guarded on hostOrigin, not widgetId - see openUrl() for why. widgetId is set at the
+        // top of init(), so a widgetId guard would let a call during the await window post
+        // this to '*'.
+        if (this.hostOrigin === null) {
+            throw new Error('WidgetSDK: call init() and wait for the handshake before requestDisplayMode()');
+        }
+        this.send({ source: 'ivicos-widget-sdk', type: 'display-mode-request', mode });
+    }
+
+    /**
+     * Fires on every mode the host confirms, including ones nobody asked for (Escape, a click
+     * on the backdrop, the card being turned away) and including refusals, which arrive as the
+     * mode you already had. Returns an unsubscribe function.
+     */
+    public onDisplayModeChange(listener: (mode: DisplayMode) => void): () => void {
+        this.displayModeListeners.add(listener);
+        return () => this.displayModeListeners.delete(listener);
+    }
+
     /** Stops watching for resize/messages. Call this if the widget's own page is being torn down without a full reload. */
     public destroy(): void {
         window.removeEventListener('message', this.onMessage);
@@ -207,6 +265,7 @@ export class WidgetSDK {
         this.contextListeners.clear();
         this.visibilityListeners.clear();
         this.sessionEndingListeners.clear();
+        this.displayModeListeners.clear();
         // An openUrl() promise left pending after teardown surfaces as a widget that silently
         // never responds to a click, so settle them the same way a silent host would.
         [...this.openUrlResolvers.values()].forEach((resolve) => resolve('denied'));

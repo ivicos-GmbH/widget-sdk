@@ -274,16 +274,21 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 |---|---|---|
 | `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt ab, wenn der Host den Handshake nicht innerhalb von 10 s abschließt oder danach nicht innerhalb von weiteren 10 s den ersten Kontext sendet. Ein zweiter Aufruf wirft. |
 | `init({ backFace: true })` | | Teilt dem Host mit, dass dieses Widget zusätzlich eine Rückseite unter `<deine iframe-URL>/backside` bereitstellt, damit er die Umdrehen-Schaltfläche anbietet. |
+| `init({ displayModes })` | | Kündigt die Anzeigemodi an, die dieses Widget darstellen kann, damit der Host die Vergrößern-Schaltfläche anbietet (siehe [Anzeigemodi](#anzeigemodi)). |
 | `getContext()` | `WidgetContext \| null` | Der zuletzt empfangene Kontext. `null`, bis `init()` sich auflöst — nimm bevorzugt den Wert aus `init()`. |
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
 | `onSessionEnding(fn)` | `() => void` | Ruft `fn()` kurz bevor das Widget abgebaut wird. Die letzte Gelegenheit, ungesicherten Zustand zu schreiben. Gibt eine Unsubscribe-Funktion zurück. |
 | `openUrl(url)` | `Promise<OpenUrlStatus>` | Bittet den Host, `url` in einem neuen Tab zu öffnen — dein Widget selbst darf das nicht (siehe [Links aus deinem Widget öffnen](#links-aus-deinem-widget-öffnen)). Löst mit `'opened'`, `'blocked'` oder `'denied'` auf; eine Ablehnung ist eine Antwort, keine Exception. Wirft nur bei Fehlgebrauch: Aufruf, bevor `init()` sich aufgelöst hat (vor dem Handshake kennt das SDK die Origin des Hosts noch nicht), oder eine leere URL. Antwortet der Host gar nicht (ein älterer Host kennt die Nachricht nicht), löst der Aufruf nach 5 s mit `'denied'` auf. |
+| `supportsDisplayModes()` | `boolean` | Ob **dieser Platz** mehr als einen Anzeigemodus anbietet. Kommt aus dem Kontext des Hosts, nicht aus dem, was du angekündigt hast. |
+| `getDisplayMode()` | `DisplayMode` | Der Anzeigemodus, den der Host zuletzt bestätigt hat. `'default'`, bis er etwas anderes sagt. |
+| `requestDisplayMode(mode)` | `void` | Bittet den Host um einen Anzeigemodus. Gibt bewusst nichts zurück: Die Antwort kommt bei `onDisplayModeChange` an, und der Host darf den Modus auch von sich aus ändern. Wirft nur, wenn er aufgerufen wird, bevor `init()` sich aufgelöst hat. |
+| `onDisplayModeChange(fn)` | `() => void` | Ruft `fn(mode)` bei jedem Modus, den der Host bestätigt — auch bei solchen, um die niemand gebeten hat, und bei Ablehnungen, die als der Modus ankommen, den du schon hattest. Gibt eine Unsubscribe-Funktion zurück. |
 | `reportResize(height)` | `void` | Ohne Wirkung auf das Layout: Der Host bestimmt die Größe selbst — siehe unten. Die Nachricht bleibt Teil des Protokolls und wird weiterhin gesendet, vom Host aber ignoriert. Nur noch aus Kompatibilitätsgründen vorhanden. |
 | `destroy()` | `void` | Entfernt den Message-Listener, trennt den ResizeObserver und verwirft alle Listener. Aufrufen, wenn deine Seite das Widget ohne vollen Reload abbaut (etwa bei einem SPA-Routenwechsel). |
 
 Ebenfalls aus dem Paket exportiert: `SDK_VERSION` (die Protokollversion dieses Builds) sowie die
-Typen `WidgetContext`, `InitOptions` und `OpenUrlStatus`.
+Typen `WidgetContext`, `InitOptions`, `OpenUrlStatus` und `DisplayMode`.
 
 **Zur Größe deines Widgets.** Die bestimmt der Host, nicht du. Dein Widget wird in einen Bereich
 fester Größe eingebettet, und ist dein Inhalt höher, scrollt deine eigene Seite darin — genau wie in
@@ -456,6 +461,51 @@ gepflegt werden müssten.
 die URL an `'*'` senden — deshalb wirft `openUrl()` dort, statt sie ungezielt hinauszuschicken. In
 der Praxis ist das kein Thema: Du wartest ohnehin auf `init()`, bevor du irgendetwas renderst, das
 sich klicken lässt.
+
+### Anzeigemodi
+
+Eine Dashboard-Karte gibt einem Widget rund 350×294 Pixel. Für eine Liste — Arbeitspakete,
+Tickets, Termine — ist das ein Vorgeschmack, keine Übersicht. Ein Widget kann ankündigen, dass es
+auch ein vergrößertes Layout darstellt; der Host bietet der Nutzerin dann eine Schaltfläche zum
+Umschalten an:
+
+```js
+const sdk = new WidgetSDK();
+await sdk.init({ widgetId: 'my-widget', displayModes: ['default', 'expanded'] });
+
+sdk.onDisplayModeChange((mode) => {
+    // Wenn das hier läuft, hat der Host den iframe bereits neu dimensioniert.
+    document.documentElement.dataset.displayMode = mode;
+});
+```
+
+**Die Schaltfläche zeichnet der Host, nicht du.** `displayModes` anzukündigen ist das gesamte
+Opt-in; eine eigene Schaltfläche bedeutet, dass die Nutzerin zwei sieht.
+
+**Nimm lieber CSS als JavaScript.** Der Host ändert die Größe deines iframes, eine Media Query
+erledigt die Arbeit also ganz ohne Nachrichten — und dieselbe Regel sorgt zugleich dafür, dass dein
+Widget einen großen Platz im Raum gut nutzt, an dem gar kein Anzeigemodus beteiligt ist:
+
+```css
+@media (min-width: 620px) { .list { display: grid; grid-template-columns: 1fr 1fr; } }
+```
+
+Kündige `'expanded'` nur an, wenn sich dein Layout tatsächlich ändert. Ein Widget, das bei beiden
+Größen gleich aussieht, bekommt eine Schaltfläche, die scheinbar nichts tut.
+
+| Methode | Rückgabe | Bedeutung |
+| --- | --- | --- |
+| `init({ displayModes })` | — | Kündigt die Modi an, die dieses Widget darstellen kann. |
+| `supportsDisplayModes()` | `boolean` | Bietet **dieser Platz** mehr als einen Modus an? |
+| `getDisplayMode()` | `DisplayMode` | Der Modus, den der Host zuletzt bestätigt hat. |
+| `requestDisplayMode(mode)` | `void` | Eine Bitte, keine Zusage. |
+| `onDisplayModeChange(fn)` | `() => void` | Feuert bei jeder Bestätigung; gibt eine Unsubscribe-Funktion zurück. |
+
+`supportsDisplayModes()` fragt nach dem Platz, nicht nach deinem Widget: Ein Platz im Raum ist
+bereits groß und bietet nichts zum Umschalten. `requestDisplayMode()` gibt es, um zu vergrößern,
+wenn die Nutzerin etwas in deinem Widget angeklickt hat — der Host entscheidet weiterhin, darf
+ablehnen und darf dich jederzeit wieder verkleinern. Genau deshalb sollte nur
+`onDisplayModeChange` dein Layout ändern.
 
 ### Hosting-Anforderungen
 
@@ -979,16 +1029,21 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 |---|---|---|
 | `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects if the host fails to complete the handshake within 10s, or fails to follow it with a first context within a further 10s. Calling it twice throws. |
 | `init({ backFace: true })` | | Tells the host this widget also serves a back face at `<your iframe URL>/backside`, so it offers the flip control. |
+| `init({ displayModes })` | | Announces the display modes this widget can render, so the host offers the enlarge control (see [Display modes](#display-modes)). |
 | `getContext()` | `WidgetContext \| null` | The most recently received context. `null` until `init()` resolves — prefer the value `init()` gives you. |
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
 | `onSessionEnding(fn)` | `() => void` | Calls `fn()` shortly before the widget is torn down. Your last chance to flush unsaved state. Returns an unsubscribe function. |
 | `openUrl(url)` | `Promise<OpenUrlStatus>` | Asks the host to open `url` in a new tab — your widget is not allowed to do that itself (see [Opening links out of your widget](#opening-links-out-of-your-widget)). Resolves with `'opened'`, `'blocked'` or `'denied'`; a refusal is an answer, not an exception. Throws only on misuse: calling it before `init()` has resolved (before the handshake the SDK doesn't know the host's origin yet), or an empty URL. If the host never answers (an older host doesn't know the message), the call resolves `'denied'` after 5s. |
+| `supportsDisplayModes()` | `boolean` | Whether **this placement** offers more than one display mode. Read from the host's context, not from what you announced. |
+| `getDisplayMode()` | `DisplayMode` | The display mode the host last confirmed. `'default'` until it says otherwise. |
+| `requestDisplayMode(mode)` | `void` | Asks the host for a display mode. Returns nothing on purpose: the answer arrives at `onDisplayModeChange`, and the host may also change the mode on its own. Throws only if called before `init()` has resolved. |
+| `onDisplayModeChange(fn)` | `() => void` | Calls `fn(mode)` on every mode the host confirms — including ones nobody asked for, and refusals, which arrive as the mode you already had. Returns an unsubscribe function. |
 | `reportResize(height)` | `void` | Has no effect on layout: the host decides the size itself — see below. The message stays part of the protocol and is still sent, but the host ignores it. Kept for compatibility only. |
 | `destroy()` | `void` | Removes the message listener, disconnects the resize observer, drops all listeners. Call it if your page tears the widget down without a full reload (an SPA route change, for instance). |
 
 Also exported from the package: `SDK_VERSION` (the protocol version this build speaks) and the
-`WidgetContext` / `InitOptions` / `OpenUrlStatus` types.
+`WidgetContext` / `InitOptions` / `OpenUrlStatus` / `DisplayMode` types.
 
 **About your widget's size.** The host decides it, not you. Your widget is embedded in a
 fixed-size area, and if your content is taller, your own page scrolls inside it — exactly like any
@@ -1153,6 +1208,50 @@ impossible without anyone maintaining counters or rate limits.
 **Wait for `init()`.** Before the handshake the SDK doesn't know the host's origin yet and would
 have to post the URL to `'*'`, so `openUrl()` throws there rather than sending it untargeted. In
 practice this never comes up: you already await `init()` before rendering anything clickable.
+
+### Display modes
+
+A dashboard card gives a widget about 350x294 pixels. For a list — work packages, tickets,
+appointments — that is a teaser. A widget can announce that it also renders an enlarged
+layout, and the host will offer the user a control to switch:
+
+```js
+const sdk = new WidgetSDK();
+await sdk.init({ widgetId: 'my-widget', displayModes: ['default', 'expanded'] });
+
+sdk.onDisplayModeChange((mode) => {
+    // The host has already resized the iframe by the time this runs.
+    document.documentElement.dataset.displayMode = mode;
+});
+```
+
+**The host draws the control, not you.** Announcing `displayModes` is the whole opt-in;
+adding your own button means the user sees two.
+
+**Prefer CSS to JavaScript.** The host resizes your iframe, so a media query does the work
+with no messages at all — and the same rule then makes your widget use a large room
+placement well, which no display mode is involved in:
+
+```css
+@media (min-width: 620px) { .list { display: grid; grid-template-columns: 1fr 1fr; } }
+```
+
+Announce `'expanded'` only if your layout actually changes. A widget that looks identical at
+both sizes gets a control that appears to do nothing.
+
+| Method | Returns | Meaning |
+| --- | --- | --- |
+| `init({ displayModes })` | — | Announces the modes this widget can render. |
+| `supportsDisplayModes()` | `boolean` | Does this **placement** offer more than one mode? |
+| `getDisplayMode()` | `DisplayMode` | The mode the host last confirmed. |
+| `requestDisplayMode(mode)` | `void` | A request, not a guarantee. |
+| `onDisplayModeChange(fn)` | `() => void` | Fires on every confirmation; returns an unsubscribe. |
+
+`supportsDisplayModes()` asks about the placement, not about your widget: a room placement is
+already large and offers nothing to switch to. `requestDisplayMode()` exists for expanding in
+response to something the user clicked inside your widget — the host still decides, may
+refuse, and may collapse you again at any time, which is why only `onDisplayModeChange`
+should change your layout.
 
 ### Hosting requirements
 
