@@ -44,6 +44,12 @@ function openUrlRequests(parent: Window): { requestId: string; url: string }[] {
     return sentMessages(parent).filter((msg): msg is Extract<WidgetToHostMessage, { type: 'open-url' }> => msg.type === 'open-url');
 }
 
+function displayModeRequests(parent: Window): { mode: string }[] {
+    return sentMessages(parent).filter(
+        (msg): msg is Extract<WidgetToHostMessage, { type: 'display-mode-request' }> => msg.type === 'display-mode-request'
+    );
+}
+
 describe('WidgetSDK', () => {
     let parent: Window;
     let sdk: WidgetSDK;
@@ -544,5 +550,100 @@ describe('WidgetSDK', () => {
         });
 
         expect(sdk.supportsDisplayModes()).toBe(false);
+    });
+
+    it('sends a display-mode-request', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        sdk.requestDisplayMode('expanded');
+
+        expect(displayModeRequests(parent)).toEqual([{ source: 'ivicos-widget-sdk', type: 'display-mode-request', mode: 'expanded' }]);
+    });
+
+    it('throws if requestDisplayMode is called before the handshake', () => {
+        // Guarded on hostOrigin rather than widgetId for the same reason openUrl is: widgetId is
+        // set the moment init() starts, so a widgetId guard would let a call during the
+        // `await init(...)` window post to '*'.
+        expect(() => sdk.requestDisplayMode('expanded')).toThrow('call init()');
+        expect(parent.postMessage).not.toHaveBeenCalled();
+    });
+
+    it('updates getDisplayMode and notifies listeners when the host answers', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const seen: string[] = [];
+        sdk.onDisplayModeChange((mode) => seen.push(mode));
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'display-mode', mode: 'expanded' });
+
+        expect(sdk.getDisplayMode()).toBe('expanded');
+        expect(seen).toEqual(['expanded']);
+    });
+
+    it('notifies on a host-initiated change the widget never asked for', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'display-mode', mode: 'expanded' });
+
+        const seen: string[] = [];
+        sdk.onDisplayModeChange((mode) => seen.push(mode));
+
+        // Escape, a click on the backdrop, or the card being turned away: the host collapses on
+        // its own and says so. Nothing was requested, so a request/response API would miss this.
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'display-mode', mode: 'default' });
+
+        expect(seen).toEqual(['default']);
+        expect(sdk.getDisplayMode()).toBe('default');
+    });
+
+    it('notifies listeners even when the answer repeats the current mode', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const seen: string[] = [];
+        sdk.onDisplayModeChange((mode) => seen.push(mode));
+
+        // This is a REFUSAL: the widget asked to expand and the host said "you are still default"
+        // because another widget holds the slot. Deduplicating on value would swallow it, leaving
+        // the widget waiting for an answer that already arrived.
+        sdk.requestDisplayMode('expanded');
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'display-mode', mode: 'default' });
+
+        expect(seen).toEqual(['default']);
+    });
+
+    it('unsubscribes a display-mode listener', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const seen: string[] = [];
+        const unsubscribe = sdk.onDisplayModeChange((mode) => seen.push(mode));
+        unsubscribe();
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'display-mode', mode: 'expanded' });
+
+        expect(seen).toEqual([]);
+    });
+
+    it('stops notifying after destroy()', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget', displayModes: ['default', 'expanded'] });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const seen: string[] = [];
+        sdk.onDisplayModeChange((mode) => seen.push(mode));
+        sdk.destroy();
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'display-mode', mode: 'expanded' });
+
+        expect(seen).toEqual([]);
     });
 });

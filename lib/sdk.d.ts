@@ -12,6 +12,7 @@ export declare class WidgetSDK {
     private resizeObserver;
     private lastReportedHeight;
     private openUrlResolvers;
+    private displayModeListeners;
     private onMessage;
     init(options: InitOptions): Promise<WidgetContext>;
     getContext(): WidgetContext | null;
@@ -22,6 +23,8 @@ export declare class WidgetSDK {
     onSessionEnding(listener: () => void): () => void;
     reportResize(height: number): void;
     openUrl(url: string): Promise<OpenUrlStatus>;
+    requestDisplayMode(mode: DisplayMode): void;
+    onDisplayModeChange(listener: (mode: DisplayMode) => void): () => void;
     destroy(): void;
     private send;
     private completeHandshake;
