@@ -17,6 +17,7 @@ export interface InitOptions {
     widgetId: string;
     backFace?: boolean;
 }
+export type OpenUrlStatus = 'opened' | 'blocked' | 'denied';
 export type HostToWidgetMessage = {
     source: 'ivicos-widget-host';
     type: 'handshake';
@@ -32,6 +33,11 @@ export type HostToWidgetMessage = {
 } | {
     source: 'ivicos-widget-host';
     type: 'session-ending';
+} | {
+    source: 'ivicos-widget-host';
+    type: 'open-url-result';
+    requestId: string;
+    status: OpenUrlStatus;
 };
 export type WidgetToHostMessage = {
     source: 'ivicos-widget-sdk';
@@ -47,5 +53,10 @@ export type WidgetToHostMessage = {
     source: 'ivicos-widget-sdk';
     type: 'resize';
     height: number;
+} | {
+    source: 'ivicos-widget-sdk';
+    type: 'open-url';
+    requestId: string;
+    url: string;
 };
 //# sourceMappingURL=types.d.ts.map

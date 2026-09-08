@@ -38,14 +38,28 @@ export interface InitOptions {
     backFace?: boolean;
 }
 
+/**
+ * Outcome of an `openUrl` request.
+ *
+ * - 'opened'  - the host opened the window.
+ * - 'denied'  - host policy refused: origin not declared in the widget's manifest, not https, or
+ *               no user gesture was in effect. A developer error - log it, don't show the user an
+ *               error they didn't cause.
+ * - 'blocked' - policy allowed it, the browser's popup blocker didn't. Offer the user a link they
+ *               can click themselves.
+ */
+export type OpenUrlStatus = 'opened' | 'blocked' | 'denied';
+
 /** Internal message envelope exchanged over postMessage between host and widget iframe. */
 export type HostToWidgetMessage =
     | { source: 'ivicos-widget-host'; type: 'handshake'; nonce: string }
     | { source: 'ivicos-widget-host'; type: 'context'; context: WidgetContext }
     | { source: 'ivicos-widget-host'; type: 'visibility-change'; visible: boolean }
-    | { source: 'ivicos-widget-host'; type: 'session-ending' };
+    | { source: 'ivicos-widget-host'; type: 'session-ending' }
+    | { source: 'ivicos-widget-host'; type: 'open-url-result'; requestId: string; status: OpenUrlStatus };
 
 export type WidgetToHostMessage =
     | { source: 'ivicos-widget-sdk'; type: 'ready'; widgetId: string; sdkVersion: number; hasBackFace?: boolean }
     | { source: 'ivicos-widget-sdk'; type: 'handshake-ack'; nonce: string }
-    | { source: 'ivicos-widget-sdk'; type: 'resize'; height: number };
+    | { source: 'ivicos-widget-sdk'; type: 'resize'; height: number }
+    | { source: 'ivicos-widget-sdk'; type: 'open-url'; requestId: string; url: string };

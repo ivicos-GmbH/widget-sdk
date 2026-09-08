@@ -1,9 +1,27 @@
-import { SDK_VERSION, type HostToWidgetMessage, type InitOptions, type WidgetContext, type WidgetToHostMessage } from './types.js';
+import {
+    SDK_VERSION,
+    type HostToWidgetMessage,
+    type InitOptions,
+    type OpenUrlStatus,
+    type WidgetContext,
+    type WidgetToHostMessage
+} from './types.js';
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 // A host that completes the handshake and then never pushes a context would otherwise leave
 // init() pending forever. Each stage gets its own deadline rather than one shared budget.
 const CONTEXT_TIMEOUT_MS = 10_000;
+/** How long to wait for the host's answer before assuming an older host that ignores the message. */
+const OPEN_URL_TIMEOUT_MS = 5_000;
+
+// Mirrors the host's own nonce generator. The SDK ships to browsers we don't choose, so the
+// fallback isn't optional - `crypto.randomUUID` needs a secure context and isn't everywhere.
+function generateRequestId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 /**
  * SDK for widgets embedded into ivCampus. One instance per page - construct it once and call
@@ -29,6 +47,8 @@ export class WidgetSDK {
     private resizeObserver: ResizeObserver | null = null;
 
     private lastReportedHeight: number | null = null;
+
+    private openUrlResolvers = new Map<string, (status: OpenUrlStatus) => void>();
 
     private onMessage = (event: MessageEvent): void => {
         if (event.source !== window.parent) return;
@@ -62,6 +82,15 @@ export class WidgetSDK {
             }
             case 'session-ending': {
                 [...this.sessionEndingListeners].forEach((listener) => listener());
+                break;
+            }
+            case 'open-url-result': {
+                // Unknown ids are dropped rather than treated as an error: a late answer for a
+                // request abandoned by destroy() is expected, not exceptional.
+                const resolve = this.openUrlResolvers.get(message.requestId);
+                if (!resolve) break;
+                this.openUrlResolvers.delete(message.requestId);
+                resolve(message.status);
                 break;
             }
         }
@@ -131,6 +160,45 @@ export class WidgetSDK {
         this.send({ source: 'ivicos-widget-sdk', type: 'resize', height });
     }
 
+    /**
+     * Asks the host to open `url` in a new tab. The widget iframe is sandboxed without
+     * `allow-popups`, so it cannot open a window itself - the host does it, but only for origins
+     * declared in this widget's manifest and only while a user gesture is in effect. Call it from
+     * a click handler, never from a timer or a data-load callback.
+     *
+     * A request is a request: check the status before assuming anything happened.
+     */
+    public async openUrl(url: string): Promise<OpenUrlStatus> {
+        // Guarded on hostOrigin, not widgetId: widgetId is set the moment init() starts, but the
+        // host's real origin only arrives with the handshake. Sending before that would post the
+        // URL to '*' - readable by whatever else is listening - which is exactly the kind of leak
+        // this whole mechanism exists to avoid.
+        if (this.hostOrigin === null) {
+            throw new Error('WidgetSDK: call init() and wait for the handshake before openUrl()');
+        }
+        if (typeof url !== 'string' || url.length === 0) {
+            throw new Error('WidgetSDK: openUrl() needs a non-empty URL string');
+        }
+
+        const requestId = generateRequestId();
+        return new Promise<OpenUrlStatus>((resolve) => {
+            // A host predating this message type drops it silently (the same way it already
+            // ignores 'resize'), so there is no answer coming. Time out into the status that
+            // means "it didn't happen" rather than leaving the caller's promise pending.
+            const timeout = setTimeout(() => {
+                this.openUrlResolvers.delete(requestId);
+                resolve('denied');
+            }, OPEN_URL_TIMEOUT_MS);
+
+            this.openUrlResolvers.set(requestId, (status) => {
+                clearTimeout(timeout);
+                resolve(status);
+            });
+
+            this.send({ source: 'ivicos-widget-sdk', type: 'open-url', requestId, url });
+        });
+    }
+
     /** Stops watching for resize/messages. Call this if the widget's own page is being torn down without a full reload. */
     public destroy(): void {
         window.removeEventListener('message', this.onMessage);
@@ -139,6 +207,10 @@ export class WidgetSDK {
         this.contextListeners.clear();
         this.visibilityListeners.clear();
         this.sessionEndingListeners.clear();
+        // An openUrl() promise left pending after teardown surfaces as a widget that silently
+        // never responds to a click, so settle them the same way a silent host would.
+        [...this.openUrlResolvers.values()].forEach((resolve) => resolve('denied'));
+        this.openUrlResolvers.clear();
     }
 
     private send(message: WidgetToHostMessage): void {
