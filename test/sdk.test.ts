@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WidgetSDK } from '../src/sdk.js';
-import { SDK_VERSION, type HostToWidgetMessage, type OpenUrlStatus, type WidgetContext, type WidgetToHostMessage } from '../src/types.js';
+import {
+    SDK_VERSION,
+    type DisplayMode,
+    type HostToWidgetMessage,
+    type OpenUrlStatus,
+    type WidgetContext,
+    type WidgetToHostMessage
+} from '../src/types.js';
 
 const HOST_ORIGIN = 'https://host.example.com';
 
@@ -447,5 +454,25 @@ describe('WidgetSDK', () => {
             sdkVersion: SDK_VERSION,
             hasBackFace: true
         });
+    });
+
+    it('carries the display-mode types', () => {
+        const request: WidgetToHostMessage = {
+            source: 'ivicos-widget-sdk',
+            type: 'display-mode-request',
+            mode: 'expanded'
+        };
+        const answer: HostToWidgetMessage = {
+            source: 'ivicos-widget-host',
+            type: 'display-mode',
+            mode: 'default'
+        };
+        // The open member is the point: a mode nobody has designed yet must still typecheck,
+        // so adding a third one later is not a breaking change for widget authors.
+        const future: DisplayMode = 'theatre';
+
+        expect(request.mode).toBe('expanded');
+        expect(answer.mode).toBe('default');
+        expect(future).toBe('theatre');
     });
 });
