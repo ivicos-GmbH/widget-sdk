@@ -278,11 +278,12 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
 | `onSessionEnding(fn)` | `() => void` | Ruft `fn()` kurz bevor das Widget abgebaut wird. Die letzte Gelegenheit, ungesicherten Zustand zu schreiben. Gibt eine Unsubscribe-Funktion zurück. |
+| `openUrl(url)` | `Promise<OpenUrlStatus>` | Bittet den Host, `url` in einem neuen Tab zu öffnen — dein Widget selbst darf das nicht (siehe [Links aus deinem Widget öffnen](#links-aus-deinem-widget-öffnen)). Löst mit `'opened'`, `'blocked'` oder `'denied'` auf; eine Ablehnung ist eine Antwort, keine Exception. Wirft nur bei Fehlgebrauch: Aufruf, bevor `init()` sich aufgelöst hat (vor dem Handshake kennt das SDK die Origin des Hosts noch nicht), oder eine leere URL. Antwortet der Host gar nicht (ein älterer Host kennt die Nachricht nicht), löst der Aufruf nach 5 s mit `'denied'` auf. |
 | `reportResize(height)` | `void` | Ohne Wirkung auf das Layout: Der Host bestimmt die Größe selbst — siehe unten. Die Nachricht bleibt Teil des Protokolls und wird weiterhin gesendet, vom Host aber ignoriert. Nur noch aus Kompatibilitätsgründen vorhanden. |
 | `destroy()` | `void` | Entfernt den Message-Listener, trennt den ResizeObserver und verwirft alle Listener. Aufrufen, wenn deine Seite das Widget ohne vollen Reload abbaut (etwa bei einem SPA-Routenwechsel). |
 
 Ebenfalls aus dem Paket exportiert: `SDK_VERSION` (die Protokollversion dieses Builds) sowie die
-Typen `WidgetContext` und `InitOptions`.
+Typen `WidgetContext`, `InitOptions` und `OpenUrlStatus`.
 
 **Zur Größe deines Widgets.** Die bestimmt der Host, nicht du. Dein Widget wird in einen Bereich
 fester Größe eingebettet, und ist dein Inhalt höher, scrollt deine eigene Seite darin — genau wie in
@@ -401,6 +402,61 @@ Nichts davon läuft über den Host. Der Host sieht, speichert oder leitet niemal
 Anmeldestatus deines Widgets weiter — er gibt dir nur das Umdrehen und die
 `visibility-change`-Nachricht.
 
+### Links aus deinem Widget öffnen
+
+Ein `<a target="_blank">` oder ein `window.open()` aus deinem Widget heraus funktioniert nicht. Der
+Host rendert jedes Widget in einem Sandbox-Iframe ohne das Token `allow-popups`, also lehnt der
+Browser beides ab — ohne Fehler in deinem Code, nur mit dieser Meldung in der Konsole:
+
+```
+Blocked opening 'https://…/work_packages/2001' in a new window because the
+request was made in a sandboxed frame whose 'allow-popups' permission is not set.
+```
+
+Das bleibt so. Stattdessen bittest du den Host, den Link zu öffnen — er ist nicht sandboxed und
+öffnet ihn für dich:
+
+```ts
+button.addEventListener('click', async () => {
+    const status = await sdk.openUrl(`https://dein-openproject.example.com/work_packages/${id}`);
+
+    if (status === 'blocked') {
+        // Der Popup-Blocker war es. Biete einen Link an, den die Person selbst klicken kann.
+        showManualLink(id);
+    }
+    if (status === 'denied') {
+        // Deine Konfiguration, nicht der Fehler der Nutzerin. In die Konsole, nicht ins UI.
+        console.error('[mein-widget] Host hat das Öffnen der URL abgelehnt');
+    }
+});
+```
+
+`openUrl()` löst immer auf — mit einem von drei Status:
+
+| `status` | Bedeutung | Was dein Widget tun sollte |
+|---|---|---|
+| `opened` | Der Host hat das Fenster geöffnet. | Nichts. |
+| `denied` | Die Host-Policy hat abgelehnt: Origin nicht deklariert, nicht `https:`, oder keine Nutzerinteraktion aktiv. | Ein **Entwicklerfehler**. In die Konsole loggen. Zeig der Person keine erschreckende Meldung — sie hat nichts falsch gemacht. |
+| `blocked` | Die Policy war einverstanden, der Popup-Blocker des Browsers nicht. | Zeig eine manuelle Schaltfläche („In OpenProject öffnen"), die die Person selbst klicken kann. |
+
+Drei Dinge musst du dafür einhalten:
+
+**Deklariere die Origin in deinem Manifest.** Nur Origins aus dem Feld `allowedOrigins` deiner
+Einreichung dürfen geöffnet werden — siehe [Dein Widget einreichen](#dein-widget-einreichen). Die
+eigene Origin deines Widgets ist immer erlaubt und muss nicht deklariert werden: Sie ist ohnehin
+schon in deinem Frame geladen. Alles andere ergibt `denied`.
+
+**Rufe `openUrl()` aus einem Klick-Handler auf.** Der Host öffnet nur, solange eine echte
+Nutzerinteraktion wirkt, und die ist nach wenigen Sekunden vorbei. Aus einem `setTimeout`, einem
+`useEffect` oder dem Callback eines Daten-Ladevorgangs bekommst du zuverlässig `denied`. Das ist
+Absicht: Es macht Popup-Spam physikalisch unmöglich, ohne dass irgendwo Zähler oder Limits
+gepflegt werden müssten.
+
+**Warte auf `init()`.** Vor dem Handshake kennt das SDK die Origin des Hosts noch nicht und würde
+die URL an `'*'` senden — deshalb wirft `openUrl()` dort, statt sie ungezielt hinauszuschicken. In
+der Praxis ist das kein Thema: Du wartest ohnehin auf `init()`, bevor du irgendetwas renderst, das
+sich klicken lässt.
+
 ### Hosting-Anforderungen
 
 Jede HTTPS-URL, die du kontrollierst, funktioniert, mit drei harten Anforderungen:
@@ -469,6 +525,8 @@ teilen](#zustand-zwischen-deinen-beiden-seiten-teilen).
 Seite also nicht umleiten. Bleibt die Umleitung *innerhalb deines eigenen Iframes* — die
 funktioniert, aber die meisten Identity-Provider (darunter Google und Microsoft) verweigern das
 Framing grundsätzlich, sodass ein klassischer OAuth-Redirect zu ihnen schlicht nicht rendert.
+[`openUrl()`](#links-aus-deinem-widget-öffnen) hilft hier nicht: Der Host öffnet mit `noopener`, das
+geöffnete Fenster kann dir also nichts zurückmelden. Es ist ein Weg nach draußen, kein OAuth-Popup.
 
 **Was du stattdessen tun solltest.** Bevorzuge ein Auth-Modell, das ohne interaktiven Login im Frame
 auskommt: Halte Zugangsdaten für die Lebensdauer des Widgets im Speicher und stelle sie bei jedem
@@ -518,8 +576,26 @@ window.addEventListener('message', (event) => {
     if (msg.type === 'session-ending') {
         // die Session des Widgets endet; aufräumen und auf die Zerstörung vorbereiten
     }
+    if (msg.type === 'open-url-result') {
+        // msg.requestId: die id, die du gesendet hast; msg.status: 'opened' | 'blocked' | 'denied'
+    }
 });
 ```
+
+**Um eine externe URL zu öffnen, bitte den Host darum** (siehe [Links aus deinem Widget
+öffnen](#links-aus-deinem-widget-öffnen) für das Warum und die Statuswerte). Erzeuge pro Anfrage
+eine eigene `requestId`, damit du mehrere offene Anfragen auseinanderhalten kannst, und sende aus
+einem echten Klick-Handler heraus:
+
+```js
+const requestId = crypto.randomUUID(); // Fallback, falls nicht verfügbar: `${Date.now()}-${Math.random().toString(36).slice(2)}`
+window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'open-url', requestId, url: 'https://example.com/a' }, hostOrigin);
+// Die Antwort kommt als 'open-url-result' mit derselben requestId zurück. Antwortet sie nie, ist
+// der Host älter als diese Nachricht - behandle das nach ein paar Sekunden wie 'denied'.
+```
+
+Beide Nachrichten sind rein additiv: `SDK_VERSION` bleibt **2**. Ein Host, der `open-url` nicht
+kennt, ignoriert es genau so still, wie er `resize` schon ignoriert.
 
 **Um die Größe musst du dich nicht kümmern.** Der Host gibt deiner Seite einen Bereich fester Größe,
 in dem sie ganz normal scrollt. Die `resize`-Nachricht gehört weiterhin zum Protokoll und wird
@@ -548,6 +624,7 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
    | Beschreibung | Freitext |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
+   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
 
 2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
    kann von niemandem aktiviert oder genutzt werden, bevor sie geprüft wurde.
@@ -567,6 +644,12 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
 4. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
    Icon, Beschreibung, Placements) oder ganz zurückziehen. Die Ausnahme ist die Widget-ID: Sie liegt
    fest, und eine andere ID ist ein anderes Widget.
+
+**`allowedOrigins` wird von einem Menschen geprüft.** Das Feld ist keine Formalie: Mit der Freigabe
+deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
+Deshalb gilt: **Änderst du `allowedOrigins` nach der Freigabe, geht das Widget zurück auf
+„Ausstehende Überprüfung"** und rendert bis zur erneuten Freigabe nicht mehr. Nimm also lieber gleich
+alle Origins auf, die du brauchst, statt sie später einzeln nachzureichen.
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
@@ -600,6 +683,11 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
   Insbesondere weiterhin **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
   der übergeordneten Seite und kein Zugriff auf ivCampus-Cookies/localStorage/DOM außerhalb deines eigenen
   Iframes.
+- **Externe Links öffnet der Host, nicht dein Widget.** Das ist Absicht: Dein Widget erhält nie das
+  Recht, Fenster zu öffnen — es darf nur darum bitten ([`openUrl()`](#links-aus-deinem-widget-öffnen)),
+  und der Host prüft die Origin gegen dein `allowedOrigins` und öffnet nur während einer echten
+  Nutzerinteraktion. Geöffnet wird immer mit `noopener,noreferrer`, die Zielseite bekommt also
+  keinerlei Handle zurück auf den Campus.
 - Erhält niemals die echten ivCampus-Zugangsdaten der Endnutzerin/des Endnutzers, in keiner Form.
 - Alle Nachrichten werden gegen `event.source === window.parent` und, nach der ersten akzeptierten
   Nachricht, gegen eine fixierte erwartete Origin validiert — siehe
@@ -895,11 +983,12 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
 | `onSessionEnding(fn)` | `() => void` | Calls `fn()` shortly before the widget is torn down. Your last chance to flush unsaved state. Returns an unsubscribe function. |
+| `openUrl(url)` | `Promise<OpenUrlStatus>` | Asks the host to open `url` in a new tab — your widget is not allowed to do that itself (see [Opening links out of your widget](#opening-links-out-of-your-widget)). Resolves with `'opened'`, `'blocked'` or `'denied'`; a refusal is an answer, not an exception. Throws only on misuse: calling it before `init()` has resolved (before the handshake the SDK doesn't know the host's origin yet), or an empty URL. If the host never answers (an older host doesn't know the message), the call resolves `'denied'` after 5s. |
 | `reportResize(height)` | `void` | Has no effect on layout: the host decides the size itself — see below. The message stays part of the protocol and is still sent, but the host ignores it. Kept for compatibility only. |
 | `destroy()` | `void` | Removes the message listener, disconnects the resize observer, drops all listeners. Call it if your page tears the widget down without a full reload (an SPA route change, for instance). |
 
 Also exported from the package: `SDK_VERSION` (the protocol version this build speaks) and the
-`WidgetContext` / `InitOptions` types.
+`WidgetContext` / `InitOptions` / `OpenUrlStatus` types.
 
 **About your widget's size.** The host decides it, not you. Your widget is embedded in a
 fixed-size area, and if your content is taller, your own page scrolls inside it — exactly like any
@@ -1012,6 +1101,59 @@ for it to work.
 None of this is host-mediated. The host never sees, stores or forwards anything about your
 widget's own sign-in state - it only ever gives you the flip and the `visibility-change` message.
 
+### Opening links out of your widget
+
+An `<a target="_blank">` or a `window.open()` from inside your widget does not work. The host
+renders every widget in a sandboxed iframe without the `allow-popups` token, so the browser refuses
+both — no error in your own code, just this in the console:
+
+```
+Blocked opening 'https://…/work_packages/2001' in a new window because the
+request was made in a sandboxed frame whose 'allow-popups' permission is not set.
+```
+
+That is not going to change. Instead, ask the host to open the link — it is not sandboxed, and it
+opens it for you:
+
+```ts
+button.addEventListener('click', async () => {
+    const status = await sdk.openUrl(`https://your-openproject.example.com/work_packages/${id}`);
+
+    if (status === 'blocked') {
+        // The popup blocker did this. Offer a link the user can click themselves.
+        showManualLink(id);
+    }
+    if (status === 'denied') {
+        // Your configuration, not the user's mistake. Console, not UI.
+        console.error('[my-widget] host refused to open the URL');
+    }
+});
+```
+
+`openUrl()` always resolves — with one of three statuses:
+
+| `status` | What it means | What your widget should do |
+|---|---|---|
+| `opened` | The host opened the window. | Nothing. |
+| `denied` | Host policy refused: origin not declared, not `https:`, or no user gesture in effect. | A **developer** error. Log it to the console. Don't show the user a scary message — they did nothing wrong. |
+| `blocked` | Policy allowed it; the browser's popup blocker refused. | Show a manual affordance ("Open in OpenProject") the user can click themselves. |
+
+Three things you have to get right for this:
+
+**Declare the origin in your manifest.** Only origins listed in your submission's `allowedOrigins`
+can be opened — see [Submitting your widget](#submitting-your-widget). Your widget's own origin is
+always permitted and does not need declaring: it is already loaded in your frame, so opening it
+exposes nothing new. Anything else answers `denied`.
+
+**Call `openUrl()` from a click handler.** The host only opens while a real user gesture is in
+effect, and that lapses after a few seconds. From a `setTimeout`, a `useEffect` or a data-load
+callback you will reliably get `denied`. That is deliberate: it makes popup spam physically
+impossible without anyone maintaining counters or rate limits.
+
+**Wait for `init()`.** Before the handshake the SDK doesn't know the host's origin yet and would
+have to post the URL to `'*'`, so `openUrl()` throws there rather than sending it untargeted. In
+practice this never comes up: you already await `init()` before rendering anything clickable.
+
 ### Hosting requirements
 
 Any HTTPS URL you control works, with three hard requirements:
@@ -1074,7 +1216,9 @@ above for the concrete pattern.
 `window.open` is blocked; `allow-top-navigation` is not granted either, so you can't redirect the
 parent page. That leaves redirecting *within your own iframe*, which does work — but most identity
 providers (Google and Microsoft among them) refuse to be framed at all, so a standard OAuth redirect
-to them simply won't render.
+to them simply won't render. [`openUrl()`](#opening-links-out-of-your-widget) does not help here: the
+host opens with `noopener`, so the opened window cannot report anything back to you. It is a way out,
+not an OAuth popup.
 
 **What to do instead.** Prefer an auth model that needs no interactive login in the frame: hold
 credentials in memory for the widget's lifetime and re-establish them on each load, and treat every
@@ -1124,8 +1268,26 @@ window.addEventListener('message', (event) => {
     if (msg.type === 'session-ending') {
         // the widget's session is ending; clean up and prepare for destruction
     }
+    if (msg.type === 'open-url-result') {
+        // msg.requestId: the id you sent; msg.status: 'opened' | 'blocked' | 'denied'
+    }
 });
 ```
+
+**To open an external URL, ask the host** (see [Opening links out of your
+widget](#opening-links-out-of-your-widget) for why, and for what the statuses mean). Generate a
+fresh `requestId` per request so you can tell several in-flight answers apart, and send it from a
+real click handler:
+
+```js
+const requestId = crypto.randomUUID(); // fallback where unavailable: `${Date.now()}-${Math.random().toString(36).slice(2)}`
+window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'open-url', requestId, url: 'https://example.com/a' }, hostOrigin);
+// The answer comes back as 'open-url-result' with the same requestId. If it never comes, the host
+// predates this message - treat that as 'denied' after a few seconds.
+```
+
+Both messages are purely additive: `SDK_VERSION` stays at **2**. A host that doesn't know
+`open-url` ignores it exactly as silently as it already ignores `resize`.
 
 **You don't need to manage your size.** The host gives your page a fixed-size area to live in, and
 your page scrolls inside it normally. The `resize` message is still part of the protocol and is
@@ -1154,6 +1316,7 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    | Icon URL | publicly reachable HTTPS URL to your icon |
    | Description | free text |
    | Placement | Room, Personal dashboard, or both — at least one is required |
+   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
 
 2. The submission is immediately visible to the sponsoring org and to no one else. It can't be
    enabled or used by anyone until it has been reviewed.
@@ -1172,6 +1335,12 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 4. The sponsoring org can update its own submission afterwards (name, version, URL, icon,
    description, placements) or withdraw it entirely. The Widget ID is the exception: it is fixed,
    and a different ID is a different widget.
+
+**`allowedOrigins` is reviewed by a human.** The field is not a formality: approving your widget is
+also approving that it may send users to exactly those origins. Which is why **changing
+`allowedOrigins` after approval sends the widget back to Pending review** and it stops rendering
+until it is approved again. So list every origin you need up front rather than adding them one at a
+time later.
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
@@ -1203,6 +1372,11 @@ Test your widget against a real host before submitting, rather than debugging bl
   nothing else. Still notably **not** granted: popups (`window.open` is blocked), top-level
   navigation of the parent page, and no access to any ivCampus cookie/localStorage/DOM outside
   your own iframe.
+- **External links are opened by the host, not by your widget.** That is deliberate: your widget is
+  never granted the right to open windows — it may only ask ([`openUrl()`](#opening-links-out-of-your-widget)),
+  and the host checks the origin against your `allowedOrigins` and opens only during a real user
+  gesture. The open always uses `noopener,noreferrer`, so the opened page gets no handle back to
+  the campus.
 - Never receives the end user's real ivCampus credentials, in any form.
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)

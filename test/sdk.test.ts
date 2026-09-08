@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WidgetSDK } from '../src/sdk.js';
-import { SDK_VERSION, type HostToWidgetMessage, type WidgetContext } from '../src/types.js';
+import { SDK_VERSION, type HostToWidgetMessage, type OpenUrlStatus, type WidgetContext, type WidgetToHostMessage } from '../src/types.js';
 
 const HOST_ORIGIN = 'https://host.example.com';
 
@@ -27,6 +27,14 @@ async function completeHandshakeAndContext(
 ): Promise<void> {
     emitFromHost(parent, { source: 'ivicos-widget-host', type: 'handshake', nonce: 'nonce-1' });
     emitFromHost(parent, { source: 'ivicos-widget-host', type: 'context', context });
+}
+
+function sentMessages(parent: Window): WidgetToHostMessage[] {
+    return (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls.map(([msg]) => msg as WidgetToHostMessage);
+}
+
+function openUrlRequests(parent: Window): { requestId: string; url: string }[] {
+    return sentMessages(parent).filter((msg): msg is Extract<WidgetToHostMessage, { type: 'open-url' }> => msg.type === 'open-url');
 }
 
 describe('WidgetSDK', () => {
@@ -286,6 +294,143 @@ describe('WidgetSDK', () => {
         const calls = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls;
         const readyCall = calls.find(([msg]) => msg.type === 'ready');
         expect(readyCall?.[0]).not.toHaveProperty('hasBackFace');
+    });
+
+    it('carries the open-url message types', () => {
+        const ask: WidgetToHostMessage = {
+            source: 'ivicos-widget-sdk',
+            type: 'open-url',
+            requestId: 'r1',
+            url: 'https://example.com/a'
+        };
+        const answer: HostToWidgetMessage = {
+            source: 'ivicos-widget-host',
+            type: 'open-url-result',
+            requestId: 'r1',
+            status: 'opened' satisfies OpenUrlStatus
+        };
+        expect(ask.type).toBe('open-url');
+        expect(answer.type).toBe('open-url-result');
+    });
+
+    it('openUrl() rejects before init()', async () => {
+        await expect(sdk.openUrl('https://example.com/a')).rejects.toThrow('wait for the handshake before openUrl()');
+        expect(parent.postMessage).not.toHaveBeenCalled();
+    });
+
+    // The gap between init() starting and the handshake landing is the one window where the host's
+    // real origin isn't known yet, so send() would fall back to '*'. openUrl() must refuse there.
+    it('openUrl() rejects while init() is still waiting for the handshake, and sends nothing', async () => {
+        vi.useFakeTimers();
+        const initPromise = sdk.init({ widgetId: 'test-widget' }).catch(() => undefined);
+        (parent.postMessage as ReturnType<typeof vi.fn>).mockClear();
+
+        await expect(sdk.openUrl('https://example.com/a')).rejects.toThrow('wait for the handshake before openUrl()');
+        expect(parent.postMessage).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        await initPromise;
+    });
+
+    it('openUrl() rejects a non-string or empty url without sending anything', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+        (parent.postMessage as ReturnType<typeof vi.fn>).mockClear();
+
+        await expect(sdk.openUrl('')).rejects.toThrow('non-empty URL string');
+        await expect(sdk.openUrl(undefined as unknown as string)).rejects.toThrow('non-empty URL string');
+        expect(openUrlRequests(parent)).toHaveLength(0);
+    });
+
+    it('openUrl() sends an origin-pinned open-url with a unique requestId per call', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+        (parent.postMessage as ReturnType<typeof vi.fn>).mockClear();
+
+        void sdk.openUrl('https://example.com/1');
+        void sdk.openUrl('https://example.com/2');
+
+        const requests = openUrlRequests(parent);
+        expect(requests.map((msg) => msg.url)).toEqual(['https://example.com/1', 'https://example.com/2']);
+        expect(requests[0].requestId).toBeTruthy();
+        expect(requests[0].requestId).not.toBe(requests[1].requestId);
+
+        const targets = (parent.postMessage as ReturnType<typeof vi.fn>).mock.calls
+            .filter(([msg]) => msg.type === 'open-url')
+            .map(([, target]) => target);
+        expect(targets).toEqual([HOST_ORIGIN, HOST_ORIGIN]);
+    });
+
+    it.each(['opened', 'blocked', 'denied'] as const)('openUrl() resolves %s when the host answers it', async (status) => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const pending = sdk.openUrl('https://example.com/a');
+        const { requestId } = openUrlRequests(parent)[0];
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'open-url-result', requestId, status });
+
+        await expect(pending).resolves.toBe(status);
+    });
+
+    it('openUrl() resolves the matching request and leaves others pending', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const first = sdk.openUrl('https://example.com/1');
+        const second = sdk.openUrl('https://example.com/2');
+        const [idOne, idTwo] = openUrlRequests(parent).map((msg) => msg.requestId);
+        expect(idOne).not.toBe(idTwo);
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'open-url-result', requestId: idTwo, status: 'blocked' });
+
+        await expect(second).resolves.toBe('blocked');
+        // `first` must still be pending - an answer is not a broadcast.
+        expect(await Promise.race([first, Promise.resolve('pending')])).toBe('pending');
+
+        emitFromHost(parent, { source: 'ivicos-widget-host', type: 'open-url-result', requestId: idOne, status: 'opened' });
+        await expect(first).resolves.toBe('opened');
+    });
+
+    it('ignores an open-url-result carrying an unknown requestId', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const pending = sdk.openUrl('https://example.com/a');
+        expect(() =>
+            emitFromHost(parent, { source: 'ivicos-widget-host', type: 'open-url-result', requestId: 'not-a-real-id', status: 'opened' })
+        ).not.toThrow();
+        expect(await Promise.race([pending, Promise.resolve('pending')])).toBe('pending');
+    });
+
+    it('openUrl() resolves denied after 5s when the host never answers', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        vi.useFakeTimers();
+        const pending = sdk.openUrl('https://example.com/a');
+
+        await vi.advanceTimersByTimeAsync(4_999);
+        expect(await Promise.race([pending, Promise.resolve('pending')])).toBe('pending');
+
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(pending).resolves.toBe('denied');
+    });
+
+    it('destroy() settles outstanding openUrl() promises instead of leaking them', async () => {
+        const initPromise = sdk.init({ widgetId: 'test-widget' });
+        await completeHandshakeAndContext(parent);
+        await initPromise;
+
+        const pending = sdk.openUrl('https://example.com/a');
+        sdk.destroy();
+
+        await expect(pending).resolves.toBe('denied');
     });
 
     it('announces a back face on ready when backFace is set', async () => {
