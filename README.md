@@ -18,6 +18,10 @@ Kontext und den Nachrichtentransport zwischen deiner Seite und dem Host. Die Gr�
 Dieses Dokument ist der Leitfaden für externe Entwickler:innen: Was ein Widget kann und nicht kann,
 wie du eines baust und wie du es auf einer echten ivCampus-Organisation live bekommst.
 
+### Ein wichtiger Tipp vorab
+
+Diese Anleitung ist ausführlich, doch Coding-KI kann sie schnell lesen, verstehen und rasch einen Proof of Concept bauen. So kannst du erst einmal ausprobieren, wie dein Widget im ivCAMPUS Nutzen stiften kann, ohne gleich selbst aktiv zu werden. Gib der KI den Link dieser Seite, sag ihr, welche Funktion dein Widget erfüllen soll (z.B. alle dir zugewiesenen Aufgaben anzeigen und auf der Widget-Rückseite z.B. die Sortierung nach Priorität oder Erstellungsdatum verändern) und bitte die KI dir alle für die Einreichung des Widgets erforderlichen Daten mit einem Copy-Button aufzulisten. So ist dein Aufwand minimal (Erfahrungsgemäß 5 Minuten — 2 für den Prompt und 3 für das Einreichen und Ausprobieren).
+
 ### Status — Bitte dies zuerst lesen
 
 Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konkret:
@@ -668,11 +672,11 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Feld | Einschränkung |
    |---|---|
    | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
-   | Name | Freitext, nur zur Anzeige |
+   | Name | Freitext; wird als Name des Widgets in der Übersicht der Integrationen angezeigt |
    | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
    | Widget-URL | deine HTTPS-Iframe-URL |
    | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
-   | Beschreibung | Freitext |
+   | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
    | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
 
@@ -777,6 +781,10 @@ between your page and the host. The host decides the size.
 
 This document is the complete guide for external developers: what a widget can and can't do,
 how to build one, and how to get it live on a real ivCampus org.
+
+### An important tip before you begin
+
+This guide is detailed, but Coding-AI can read and understand it quickly and build a proof of concept in no time. This way, you can first test how your widget can be useful in ivCAMPUS without having to take action yourself right away. Give the AI the link to this page, tell it what function your widget should perform (e.g., display all tasks assigned to you and, on the widget’s back page, allow sorting by priority or creation date), and ask the AI to list all the data required to submit the widget using a “Copy” button. This way, your effort is minimal (based on experience, 5 minutes — 2 for the prompt and 3 for submitting and testing).
 
 ### Status — please read this first
 
@@ -1409,11 +1417,11 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    | Field | Constraint |
    |---|---|
    | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
-   | Name | free text, purely for display |
+   | Name | free text; shown as the widget's name in the integrations overview |
    | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
    | Widget URL | your HTTPS iframe URL |
    | Icon URL | publicly reachable HTTPS URL to your icon |
-   | Description | free text |
+   | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
    | Placement | Room, Personal dashboard, or both — at least one is required |
    | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
 
