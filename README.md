@@ -13,14 +13,14 @@ Der ivCAMPUS ist der Ort an dem Menschen sinnvollerweise zusammenarbeiten. Manch
 SDK zum Erstellen von Widgets, die sich in [ivCampus](https://ivicos-campus.app) einbetten lassen — innerhalb
 eines Raums oder des persönlichen Dashboards. Ein Widget ist eine beliebige Seite, die du unter deiner eigenen
 HTTPS-URL hostest; ivCampus bettet sie in ein sandboxed `<iframe>` ein, und dieses SDK übernimmt Handshake,
-Kontext, Größenanpassung und den RPC-Transport zwischen deiner Seite und dem Host.
+Kontext und den Nachrichtentransport zwischen deiner Seite und dem Host. Die Größe bestimmt der Host.
 
 Dieses Dokument ist der Leitfaden für externe Entwickler:innen: Was ein Widget kann und nicht kann,
 wie du eines baust und wie du es auf einer echten ivCampus-Organisation live bekommst.
 
 ### Ein wichtiger Tipp vorab
 
-Diese Anleitung ist ausführlich, doch Coding-KI kann sie schnell lesen, verstehen und rasch einen Proof of Concept bauen. So kannst du erst einmal ausprobieren, wie dein Widget im ivCAMPUS nutzen stiften kann ohne gleich selber aktiv zu werden. Gib der KI den Link dieser Seite, sag ihr, welche Funktion dein Widget erfüllen soll (z.B. alle dir zugewiesenen Aufgaben anzeigen und auf der Widget-Rückseite z.B. die Sortierung nach Priorität oder Erstellungsdatum verändern) und bitte die KI dir alle für die Einreichung des Widgets erforderlichen Daten mit einem Copy-Button aufzulisten. So ist dein Aufwand minimal (Erfahrungsgemäß 5 Minuten - 2 für den Prompt und 3 für das Einreichen und Ausprobieren) 
+Diese Anleitung ist ausführlich, doch Coding-KI kann sie schnell lesen, verstehen und rasch einen Proof of Concept bauen. So kannst du erst einmal ausprobieren, wie dein Widget im ivCAMPUS Nutzen stiften kann, ohne gleich selbst aktiv zu werden. Gib der KI den Link dieser Seite, sag ihr, welche Funktion dein Widget erfüllen soll (z.B. alle dir zugewiesenen Aufgaben anzeigen und auf der Widget-Rückseite z.B. die Sortierung nach Priorität oder Erstellungsdatum verändern) und bitte die KI dir alle für die Einreichung des Widgets erforderlichen Daten mit einem Copy-Button aufzulisten. So ist dein Aufwand minimal (Erfahrungsgemäß 5 Minuten — 2 für den Prompt und 3 für das Einreichen und Ausprobieren).
 
 ### Status — Bitte dies zuerst lesen
 
@@ -40,8 +40,9 @@ Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konk
   normalen Zustand, nicht als Absturz. Auf diese Weise können wir dem Nutzer ein störungsfreies Erlebnis bieten, auch, wenn mal an einer Stelle etwas nicht funktioniert.
 - Das SDK wird über **GitHub Packages** veröffentlicht, nicht über die öffentliche npm-Registry — siehe
   [Installation](#installation).
+
 Nichts davon ist ein Bug, den man umgehen sollte; entwickle bitte einfach gegen das, was tatsächlich vorhanden ist. Du wirst sehen, dass das sinnvoll ist und für die Nutzer passend.
-  
+
 ### Installation
 
 Veröffentlicht über [GitHub Packages](https://github.com/features/packages) (npm-kompatibel), nicht über
@@ -150,9 +151,9 @@ sdk.onVisibilityChange((visible) => {
     }
 });
 
-// Die Inhaltshöhe wird automatisch über einen ResizeObserver auf document.body gemeldet.
-// Rufe dies nur selbst auf, wenn du das überschreiben musst (z. B. eine bewusst fixe Höhe).
-sdk.reportResize(320);
+// Die Größe bestimmt der Host: Dein Widget bekommt einen Bereich fester Größe, in dem deine
+// eigene Seite ganz normal scrollt. Dafür musst du nichts aufrufen - siehe "Zur Größe deines
+// Widgets" weiter unten.
 ```
 
 `sdk.init()` löst sich auf, sobald der Host den Handshake abgeschlossen **und** den ersten Kontext gesendet hat
@@ -275,21 +276,40 @@ Jede `on*`-Methode gibt eine Unsubscribe-Funktion zurück; rufe sie auf, wenn de
 
 | Methode | Rückgabe | Hinweise |
 |---|---|---|
-| `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt nach 10 s ab, wenn der Host nie antwortet. Ein zweiter Aufruf wirft. |
+| `init(options)` | `Promise<WidgetContext>` | Meldet das Widget an und löst mit dem ersten Kontext auf. Muss vor allem anderen aufgerufen werden. Lehnt ab, wenn der Host den Handshake nicht innerhalb von 10 s abschließt oder danach nicht innerhalb von weiteren 10 s den ersten Kontext sendet. Ein zweiter Aufruf wirft. |
+| `init({ backFace: true })` | | Teilt dem Host mit, dass dieses Widget zusätzlich eine Rückseite unter `<deine iframe-URL>/backside` bereitstellt, damit er die Umdrehen-Schaltfläche anbietet. |
+| `init({ displayModes })` | | Kündigt die Anzeigemodi an, die dieses Widget darstellen kann, damit der Host die Vergrößern-Schaltfläche anbietet (siehe [Anzeigemodi](#anzeigemodi)). |
 | `getContext()` | `WidgetContext \| null` | Der zuletzt empfangene Kontext. `null`, bis `init()` sich auflöst — nimm bevorzugt den Wert aus `init()`. |
 | `onContextChange(fn)` | `() => void` | Ruft `fn(context)` bei jedem Kontext-Push. Gibt eine Unsubscribe-Funktion zurück. |
 | `onVisibilityChange(fn)` | `() => void` | Ruft `fn(visible)`, wenn das Widget-Panel in den Hintergrund gerät oder wieder erscheint. Hintergrund heißt **nicht** geschlossen — Polling und Animation pausieren, nicht abbauen. Gibt eine Unsubscribe-Funktion zurück. |
 | `onSessionEnding(fn)` | `() => void` | Ruft `fn()` kurz bevor das Widget abgebaut wird. Die letzte Gelegenheit, ungesicherten Zustand zu schreiben. Gibt eine Unsubscribe-Funktion zurück. |
-| `reportResize(height)` | `void` | Meldet die Inhaltshöhe in Pixeln manuell. Meist unnötig — siehe unten. Wiederholte Aufrufe mit derselben Höhe werden ignoriert. |
+| `openUrl(url)` | `Promise<OpenUrlStatus>` | Bittet den Host, `url` in einem neuen Tab zu öffnen — dein Widget selbst darf das nicht (siehe [Links aus deinem Widget öffnen](#links-aus-deinem-widget-öffnen)). Löst mit `'opened'`, `'blocked'` oder `'denied'` auf; eine Ablehnung ist eine Antwort, keine Exception. Wirft nur bei Fehlgebrauch: Aufruf, bevor `init()` sich aufgelöst hat (vor dem Handshake kennt das SDK die Origin des Hosts noch nicht), oder eine leere URL. Antwortet der Host gar nicht (ein älterer Host kennt die Nachricht nicht), löst der Aufruf nach 5 s mit `'denied'` auf. |
+| `supportsDisplayModes()` | `boolean` | Ob **dieser Platz** mehr als einen Anzeigemodus anbietet. Kommt aus dem Kontext des Hosts, nicht aus dem, was du angekündigt hast. |
+| `getDisplayMode()` | `DisplayMode` | Der Anzeigemodus, den der Host zuletzt bestätigt hat. `'default'`, bis er etwas anderes sagt. |
+| `requestDisplayMode(mode)` | `void` | Bittet den Host um einen Anzeigemodus. Gibt bewusst nichts zurück: Die Antwort kommt bei `onDisplayModeChange` an, und der Host darf den Modus auch von sich aus ändern. Wirft nur, wenn er aufgerufen wird, bevor `init()` sich aufgelöst hat. |
+| `onDisplayModeChange(fn)` | `() => void` | Ruft `fn(mode)` bei jedem Modus, den der Host bestätigt — auch bei solchen, um die niemand gebeten hat, und bei Ablehnungen, die als der Modus ankommen, den du schon hattest. Gibt eine Unsubscribe-Funktion zurück. |
+| `reportResize(height)` | `void` | Ohne Wirkung auf das Layout: Der Host bestimmt die Größe selbst — siehe unten. Die Nachricht bleibt Teil des Protokolls und wird weiterhin gesendet, vom Host aber ignoriert. Nur noch aus Kompatibilitätsgründen vorhanden. |
 | `destroy()` | `void` | Entfernt den Message-Listener, trennt den ResizeObserver und verwirft alle Listener. Aufrufen, wenn deine Seite das Widget ohne vollen Reload abbaut (etwa bei einem SPA-Routenwechsel). |
 
 Ebenfalls aus dem Paket exportiert: `SDK_VERSION` (die Protokollversion dieses Builds) sowie die
-Typen `WidgetContext` und `InitOptions`.
+Typen `WidgetContext`, `InitOptions`, `OpenUrlStatus` und `DisplayMode`.
 
-**Zum Resizing.** `init()` startet einen `ResizeObserver` auf `document.body` und meldet die Höhe
-automatisch — die meisten Widgets rufen `reportResize()` nie auf. Nutze es nur zum Überschreiben:
-für eine bewusst fixe Höhe, oder wenn dein eigentlicher Inhalt in einem absolut positionierten
-Element liegt, das `document.body` nicht mitmisst.
+**Zur Größe deines Widgets.** Die bestimmt der Host, nicht du. Dein Widget wird in einen Bereich
+fester Größe eingebettet, und ist dein Inhalt höher, scrollt deine eigene Seite darin — genau wie in
+jedem anderen eingebetteten iframe. Du musst dafür nichts tun und nichts melden.
+
+Wie groß dieser Bereich ist, hängt vom Platz ab, an dem dein Widget läuft: auf dem Dashboard
+aktuell rund 350×294 CSS-Pixel, im Raum die Größe des Anhang-Bereichs, die mit dem Fenster
+variiert. Daraus folgen drei Dinge:
+
+- **Gestalte responsiv.** Nimm die genannten Zahlen als heutigen Stand, nicht als Zusage.
+- **Schalte dein eigenes Scrollen nicht ab.** `body { overflow: hidden }` ohne eigenen scrollbaren
+  Bereich macht Inhalt unerreichbar, der sonst einfach scrollen würde.
+- **`height: 100%` und `100vh` funktionieren** wie erwartet — dein Widget hat einen echten Viewport.
+
+`init()` startet weiterhin einen `ResizeObserver` auf `document.body` und meldet die Höhe; der Host
+verwendet sie nur nicht mehr fürs Layout. Frühere SDK-Versionen wurden gegen einen Host geschrieben,
+der den iframe auf die gemeldete Höhe wachsen ließ — das ist nicht mehr der Fall.
 
 **Ein fehlgeschlagenes `init()` behandeln.** `init()` lehnt ab, statt endlos zu hängen — fange das ab:
 
@@ -302,6 +322,194 @@ try {
     document.body.textContent = 'Diese Seite läuft als ivCampus-Widget.';
 }
 ```
+
+### Die Rückseite
+
+Eine Widget-Karte im Dashboard lässt sich umdrehen. Vorne steht dein Widget. Hinten erklärst du es
+— was es tut, wie man es benutzt, was deine Filter bedeuten, Links zu deiner eigenen
+Dokumentation.
+
+Liefere sie unter `/backside` aus, relativ zu der URL, die du registriert hast:
+
+```
+registrierte iframe-URL   https://example.com/my-widget
+deine Rückseite           https://example.com/my-widget/backside
+```
+
+Und teile dem Host von der **Vorderseite** aus mit, dass es sie gibt:
+
+```ts
+const sdk = new WidgetSDK();
+const context = await sdk.init({ widgetId: 'my-widget', backFace: true });
+```
+
+Ohne `backFace: true` erscheint nie eine Umdrehen-Schaltfläche — ein bestehendes Widget bleibt
+also unberührt, bis es sich aktiv dafür entscheidet. Setzt du die Option, lieferst aber kein
+`/backside` aus, sehen deine Nutzer auf der Rückseite deine 404-Seite; der Host kann das nicht
+erkennen.
+
+**Die Rückseite braucht dieses SDK nicht.** Eine statische HTML-Datei genügt. Willst du dort
+ebenfalls Theme, Sprache oder den Namen der betrachtenden Person, rufe auch dort `init()` auf —
+sie erhält denselben Kontext wie die Vorderseite.
+
+**Die Anmeldung gehört nicht auf die Rückseite.** Lässt sich dein Widget ohne Konto nicht nutzen,
+zeige deine Anmeldung auf der **Vorderseite** — das ist das Erste, was man sieht, und nach der
+Anmeldung wird daraus dein Widget. Du darfst auch die Rückseite einer Anmeldung vorbehalten, es
+ist deine Seite. Mach sie aber nie zum einzigen Weg hinein: Niemand hat einen Grund, dort zu
+suchen.
+
+**Was auf die Rückseite gehört:** Hinweise zur Nutzung, was dein Widget tut, Links zu deiner
+Dokumentation oder deinem Support, optional eine Abmelden-Schaltfläche oder Einstellungen deines
+Widgets.
+
+**Was nicht:** deine eigentlichen Inhalte, alles, was man zum *Benutzen* des Widgets braucht, und
+alles, was voraussetzt, gerade sichtbar zu sein. Der Host schickt beim Umdrehen an jede Seite ein
+`visibility-change` — pausiere also dein Polling, wenn du weggedreht bist.
+
+**Größe:** In einer Dashboard-Karte stehen der Rückseite etwa **294px** Höhe zur Verfügung (eine
+350×350-Karte abzüglich ihrer 56px hohen Kopfzeile). Das reicht für einen Hinweistext und ein,
+zwei Links. Für ein mehrstufiges Formular reicht es nicht.
+
+### Zustand zwischen deinen beiden Seiten teilen
+
+Deine Vorder- und Rückseite sind zwei getrennte Dokumente in zwei getrennten iframes — nicht zwei
+Ansichten eines laufenden Skripts. Nichts im Arbeitsspeicher überträgt sich zwischen ihnen; nur
+was diese Grenze tatsächlich überquert, tut das.
+
+Brauchst du einen Zustand, auf den sich beide Seiten einigen — meistens „ist dieser Nutzer
+angemeldet" — ist Speicher auf deiner eigenen Origin der Weg dorthin: deine Rückseite liegt
+konstruktionsbedingt unter `/backside` auf derselben Origin wie deine Vorderseite, also ist
+`localStorage` (oder ein Cookie), das eine Seite schreibt, für die andere sichtbar.
+
+Zwei Dinge stolpern hier häufig:
+
+**Einmaliges Lesen beim Laden reicht nicht.** Die Rückseite bleibt nach dem ersten Umdrehen
+gemountet — sie wird nicht bei jedem Umdrehen neu erzeugt. Meldet sich der Nutzer also auf einer
+Seite ab, während die andere noch offen ist, bemerkt diese es nicht, solange sie nicht zuhört.
+Gleichen-Ursprungs-Geschwisterdokumente erhalten ein natives `storage`-Ereignis, sobald eines von
+ihnen `localStorage` ändert — höre darauf, um live zu reagieren:
+
+```ts
+window.addEventListener('storage', (event) => {
+    if (event.key === 'my-widget-signed-in') {
+        // reagiere auf die Änderung der ANDEREN Seite - eigene Schreibvorgänge lösen dieses
+        // Ereignis bei dir selbst nicht aus
+    }
+});
+```
+
+**Dein Widget ist auf einer fremden Seite eingebettet, sein Speicher kann also partitioniert oder
+blockiert sein.** Browser schränken Speicher für ein iframe, dessen Top-Level-Seite eine andere
+Site ist als die Origin des iframes, zunehmend ein — das trifft auf jedes Widget hier zu. Verhält
+sich `localStorage` nicht wie erwartet, ist die standardbasierte Lösung die [Storage Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_Access_API):
+`document.requestStorageAccess()`, aufgerufen aus einer echten Nutzerinteraktion (ein Klick, ein
+Formular-Submit) — das iframe des Hosts trägt bereits das dafür nötige
+`allow-storage-access-by-user-activation`-Sandbox-Token.
+
+Nichts davon läuft über den Host. Der Host sieht, speichert oder leitet niemals etwas über den
+Anmeldestatus deines Widgets weiter — er gibt dir nur das Umdrehen und die
+`visibility-change`-Nachricht.
+
+### Links aus deinem Widget öffnen
+
+Ein `<a target="_blank">` oder ein `window.open()` aus deinem Widget heraus funktioniert nicht. Der
+Host rendert jedes Widget in einem Sandbox-Iframe ohne das Token `allow-popups`, also lehnt der
+Browser beides ab — ohne Fehler in deinem Code, nur mit dieser Meldung in der Konsole:
+
+```
+Blocked opening 'https://…/work_packages/2001' in a new window because the
+request was made in a sandboxed frame whose 'allow-popups' permission is not set.
+```
+
+Das bleibt so. Stattdessen bittest du den Host, den Link zu öffnen — er ist nicht sandboxed und
+öffnet ihn für dich:
+
+```ts
+button.addEventListener('click', async () => {
+    const status = await sdk.openUrl(`https://dein-openproject.example.com/work_packages/${id}`);
+
+    if (status === 'blocked') {
+        // Der Popup-Blocker war es. Biete einen Link an, den die Person selbst klicken kann.
+        showManualLink(id);
+    }
+    if (status === 'denied') {
+        // Deine Konfiguration, nicht der Fehler der Nutzerin. In die Konsole, nicht ins UI.
+        console.error('[mein-widget] Host hat das Öffnen der URL abgelehnt');
+    }
+});
+```
+
+`openUrl()` löst immer auf — mit einem von drei Status:
+
+| `status` | Bedeutung | Was dein Widget tun sollte |
+|---|---|---|
+| `opened` | Der Host hat das Fenster geöffnet. | Nichts. |
+| `denied` | Die Host-Policy hat abgelehnt: Origin nicht deklariert, nicht `https:`, oder keine Nutzerinteraktion aktiv. | Ein **Entwicklerfehler**. In die Konsole loggen. Zeig der Person keine erschreckende Meldung — sie hat nichts falsch gemacht. |
+| `blocked` | Die Policy war einverstanden, der Popup-Blocker des Browsers nicht. | Zeig eine manuelle Schaltfläche („In OpenProject öffnen"), die die Person selbst klicken kann. |
+
+Drei Dinge musst du dafür einhalten:
+
+**Deklariere die Origin in deinem Manifest.** Nur Origins aus dem Feld `allowedOrigins` deiner
+Einreichung dürfen geöffnet werden — siehe [Dein Widget einreichen](#dein-widget-einreichen). Die
+eigene Origin deines Widgets ist immer erlaubt und muss nicht deklariert werden: Sie ist ohnehin
+schon in deinem Frame geladen. Alles andere ergibt `denied`.
+
+**Rufe `openUrl()` aus einem Klick-Handler auf.** Der Host öffnet nur, solange eine echte
+Nutzerinteraktion wirkt, und die ist nach wenigen Sekunden vorbei. Aus einem `setTimeout`, einem
+`useEffect` oder dem Callback eines Daten-Ladevorgangs bekommst du zuverlässig `denied`. Das ist
+Absicht: Es macht Popup-Spam physikalisch unmöglich, ohne dass irgendwo Zähler oder Limits
+gepflegt werden müssten.
+
+**Warte auf `init()`.** Vor dem Handshake kennt das SDK die Origin des Hosts noch nicht und würde
+die URL an `'*'` senden — deshalb wirft `openUrl()` dort, statt sie ungezielt hinauszuschicken. In
+der Praxis ist das kein Thema: Du wartest ohnehin auf `init()`, bevor du irgendetwas renderst, das
+sich klicken lässt.
+
+### Anzeigemodi
+
+Eine Dashboard-Karte gibt einem Widget rund 350×294 Pixel. Für eine Liste — Arbeitspakete,
+Tickets, Termine — ist das ein Vorgeschmack, keine Übersicht. Ein Widget kann ankündigen, dass es
+auch ein vergrößertes Layout darstellt; der Host bietet der Nutzerin dann eine Schaltfläche zum
+Umschalten an:
+
+```js
+const sdk = new WidgetSDK();
+await sdk.init({ widgetId: 'my-widget', displayModes: ['default', 'expanded'] });
+
+sdk.onDisplayModeChange((mode) => {
+    // Wenn das hier läuft, hat der Host den iframe bereits neu dimensioniert.
+    document.documentElement.dataset.displayMode = mode;
+});
+```
+
+**Die Schaltfläche zeichnet der Host, nicht du.** `displayModes` anzukündigen ist das gesamte
+Opt-in; eine eigene Schaltfläche bedeutet, dass die Nutzerin zwei sieht.
+
+**Nimm lieber CSS als JavaScript.** Der Host ändert die Größe deines iframes, eine Media Query
+erledigt die Arbeit also ganz ohne Nachrichten — und dieselbe Regel sorgt zugleich dafür, dass dein
+Widget einen großen Platz im Raum gut nutzt, an dem gar kein Anzeigemodus beteiligt ist:
+
+```css
+@media (min-width: 620px) { .list { display: grid; grid-template-columns: 1fr 1fr; } }
+```
+
+Kündige `'expanded'` nur an, wenn sich dein Layout tatsächlich ändert. Ein Widget, das bei beiden
+Größen gleich aussieht, bekommt eine Schaltfläche, die scheinbar nichts tut.
+
+| Methode | Rückgabe | Bedeutung |
+| --- | --- | --- |
+| `init({ displayModes })` | — | Kündigt die Modi an, die dieses Widget darstellen kann. |
+| `supportsDisplayModes()` | `boolean` | Bietet **dieser Platz** mehr als einen Modus an? |
+| `getDisplayMode()` | `DisplayMode` | Der Modus, den der Host zuletzt bestätigt hat. |
+| `requestDisplayMode(mode)` | `void` | Eine Bitte, keine Zusage. |
+| `onDisplayModeChange(fn)` | `() => void` | Feuert bei jeder Bestätigung; gibt eine Unsubscribe-Funktion zurück. |
+
+`supportsDisplayModes()` fragt nach dem Platz, nicht nach deinem Widget: Ein Platz im Raum ist
+bereits groß und bietet nichts zum Umschalten. `requestDisplayMode()` gibt es, um zu vergrößern,
+wenn die Nutzerin etwas in deinem Widget angeklickt hat — der Host entscheidet weiterhin, darf
+ablehnen und darf dich jederzeit wieder verkleinern. Genau deshalb sollte nur
+`onDisplayModeChange` dein Layout ändern.
 
 ### Hosting-Anforderungen
 
@@ -357,15 +565,22 @@ deine Seite behält also ihre eigene Origin statt einer opaken — aber es ist e
 als der, den dieselbe Seite nutzt, wenn jemand deine Website direkt besucht. Zustand wird nicht
 übernommen, und dauerhaft ist er auch nicht.
 
-**Die Storage Access API ist kein Ausweg.** Die Sandbox des Hosts enthält
-`allow-storage-access-by-user-activation` nicht, `document.requestStorageAccess()` steht Widgets
-also nicht zur Verfügung. Entwirf für partitionierten Speicher, statt dich herausbitten zu wollen.
+**Die Storage Access API schränkt das ein, hebt es aber nicht auf.** Das Iframe des Hosts trägt das
+`allow-storage-access-by-user-activation`-Sandbox-Token, `document.requestStorageAccess()` steht
+Widgets also zur Verfügung — aber nur aus einer echten Nutzerinteraktion heraus (ein Klick, ein
+Formular-Submit), und nur in Browsern, die die API überhaupt implementieren. Entwirf standardmäßig
+für partitionierten Speicher; behandle eine gewährte Anfrage als etwas, das du dir nach einem Klick
+zurückholst, nicht als etwas, das schon beim ersten gerenderten Frame deines Widgets vorhanden ist.
+Das konkrete Muster dafür steht oben unter [Zustand zwischen deinen beiden Seiten
+teilen](#zustand-zwischen-deinen-beiden-seiten-teilen).
 
 **Ein interaktiver Login im Widget ist bewusst schwierig.** `allow-popups` wird nicht gewährt,
 `window.open` ist also blockiert; `allow-top-navigation` ebenso wenig, du kannst die übergeordnete
 Seite also nicht umleiten. Bleibt die Umleitung *innerhalb deines eigenen Iframes* — die
 funktioniert, aber die meisten Identity-Provider (darunter Google und Microsoft) verweigern das
 Framing grundsätzlich, sodass ein klassischer OAuth-Redirect zu ihnen schlicht nicht rendert.
+[`openUrl()`](#links-aus-deinem-widget-öffnen) hilft hier nicht: Der Host öffnet mit `noopener`, das
+geöffnete Fenster kann dir also nichts zurückmelden. Es ist ein Weg nach draußen, kein OAuth-Popup.
 
 **Was du stattdessen tun solltest.** Bevorzuge ein Auth-Modell, das ohne interaktiven Login im Frame
 auskommt: Halte Zugangsdaten für die Lebensdauer des Widgets im Speicher und stelle sie bei jedem
@@ -382,10 +597,12 @@ Box. Die vollständigen Message-Formen:
 **Beim Laden senden:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // oder SDK_VERSION importieren
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2, hasBackFace: true },  // oder SDK_VERSION importieren
     '*' // hier unvermeidbar - du kennst die Origin des Hosts noch nicht, und diese Nachricht enthält keine Geheimnisse
 );
 ```
+
+Das Feld `hasBackFace` ist optional und wird weggelassen, wenn das Widget keine Rückseite bereitstellt. Setzt du es auf `true`, lädt der Host die Rückseite von `<iframeUrl>/backside` — dabei bleiben Query-String und Hash erhalten.
 
 **Auf die Antwort des Hosts warten und dessen Origin ab der ersten akzeptierten Nachricht fixieren:**
 ```js
@@ -413,12 +630,32 @@ window.addEventListener('message', (event) => {
     if (msg.type === 'session-ending') {
         // die Session des Widgets endet; aufräumen und auf die Zerstörung vorbereiten
     }
+    if (msg.type === 'open-url-result') {
+        // msg.requestId: die id, die du gesendet hast; msg.status: 'opened' | 'blocked' | 'denied'
+    }
 });
 ```
 
-**Melde deine Inhaltshöhe, wann immer sie sich ändert** (sonst verwendet der Host eine kleine feste
-Standardgröße):
+**Um eine externe URL zu öffnen, bitte den Host darum** (siehe [Links aus deinem Widget
+öffnen](#links-aus-deinem-widget-öffnen) für das Warum und die Statuswerte). Erzeuge pro Anfrage
+eine eigene `requestId`, damit du mehrere offene Anfragen auseinanderhalten kannst, und sende aus
+einem echten Klick-Handler heraus:
+
 ```js
+const requestId = crypto.randomUUID(); // Fallback, falls nicht verfügbar: `${Date.now()}-${Math.random().toString(36).slice(2)}`
+window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'open-url', requestId, url: 'https://example.com/a' }, hostOrigin);
+// Die Antwort kommt als 'open-url-result' mit derselben requestId zurück. Antwortet sie nie, ist
+// der Host älter als diese Nachricht - behandle das nach ein paar Sekunden wie 'denied'.
+```
+
+Beide Nachrichten sind rein additiv: `SDK_VERSION` bleibt **2**. Ein Host, der `open-url` nicht
+kennt, ignoriert es genau so still, wie er `resize` schon ignoriert.
+
+**Um die Größe musst du dich nicht kümmern.** Der Host gibt deiner Seite einen Bereich fester Größe,
+in dem sie ganz normal scrollt. Die `resize`-Nachricht gehört weiterhin zum Protokoll und wird
+angenommen, aber ignoriert — senden musst du sie nicht:
+```js
+// Optional, ohne Wirkung auf das Layout:
 window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'resize', height: document.body.scrollHeight }, hostOrigin);
 ```
 
@@ -435,18 +672,18 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Feld | Einschränkung |
    |---|---|
    | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
-   | Name | Freitext, zur Anzeige in des Widgetnamens in der Übersicht der Integrationen |
-   | Website-URL | Ein Link auf eine Webseite, die deine App und/oder dein Widget erklärt (ggf. auch deine Homepage) |
-   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) — wird aktuell gegen nichts geprüft, braucht nur dieses Format |
+   | Name | Freitext; wird als Name des Widgets in der Übersicht der Integrationen angezeigt |
+   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
    | Widget-URL | deine HTTPS-Iframe-URL |
-   | Icon-URL | jede erreichbare URL, wird nicht als tatsächliches Bild validiert - bitte verantwortungsvoll nutzen|
-   | Beschreibung | Freitext, der beim Hover angezeigt wird und die Funktion des Widgets erklärt |
+   | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
+   | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
+   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
 
-3. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
+2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
    kann von niemandem aktiviert oder genutzt werden, bevor sie geprüft wurde.
 
-4. Verfolge sie auf demselben Screen unter **Deine Einreichungen**, wo der aktuelle Status steht:
+3. Verfolge sie auf demselben Screen unter **Deine Einreichungen**, wo der aktuelle Status steht:
 
    | Status | Bedeutung |
    |---|---|
@@ -458,16 +695,22 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    auf diesem Screen nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu) nach, wenn du
    schon länger wartest.
 
-5. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
+4. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
    Icon, Beschreibung, Placements) oder ganz zurückziehen. Die Ausnahme ist die Widget-ID: Sie liegt
    fest, und eine andere ID ist ein anderes Widget.
 
+**`allowedOrigins` wird von einem Menschen geprüft.** Das Feld ist keine Formalie: Mit der Freigabe
+deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
+Deshalb gilt: **Änderst du `allowedOrigins` nach der Freigabe, geht das Widget zurück auf
+„Ausstehende Überprüfung"** und rendert bis zur erneuten Freigabe nicht mehr. Nimm also lieber gleich
+alle Origins auf, die du brauchst, statt sie später einzeln nachzureichen.
+
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
-nicht verwendest), müssen Zeichen für Zeichen übereinstimmen.** Falls nicht, gibt es bei der Einreichung
-keinen Fehler — das Widget bleibt einfach hängen und lädt nicht, mit Timeout nach 10 Sekunden und einer
-generischen "this widget did not respond"-Meldung ohne weitere Details, woran es liegt. Das ist die häufigste
-Art, wie ein korrekt gebautes Widget kaputt erscheint.
+nicht verwendest), müssen Zeichen für Zeichen übereinstimmen.** Stimmen sie nicht überein, lädt das
+Widget nicht: es läuft nach 10 Sekunden in einen Timeout mit einer generischen "this widget did not
+respond"-Meldung. Das ist die häufigste Art, wie ein korrekt gebautes Widget kaputt erscheint — prüf
+zuerst diese beiden Werte.
 
 ### Lokale Entwicklung
 
@@ -486,15 +729,28 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
 
 ### Sicherheitsmodell
 
-- Läuft innerhalb eines `sandbox="allow-scripts allow-forms allow-same-origin"`-Iframes, den der Host
-  kontrolliert. Insbesondere **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
+- Läuft innerhalb eines `sandbox="allow-scripts allow-forms allow-same-origin
+  allow-storage-access-by-user-activation"`-Iframes, den der Host kontrolliert. Das letzte Token
+  erlaubt lediglich, dass dein Widget `document.requestStorageAccess()` aus einer echten
+  Nutzerinteraktion heraus aufrufen darf (siehe [Zustand zwischen deinen beiden Seiten
+  teilen](#zustand-zwischen-deinen-beiden-seiten-teilen)) — es gewährt sonst nichts zusätzlich.
+  Insbesondere weiterhin **nicht** gewährt: Popups (`window.open` wird blockiert), Top-Level-Navigation
   der übergeordneten Seite und kein Zugriff auf ivCampus-Cookies/localStorage/DOM außerhalb deines eigenen
   Iframes.
+- **Externe Links öffnet der Host, nicht dein Widget.** Das ist Absicht: Dein Widget erhält nie das
+  Recht, Fenster zu öffnen — es darf nur darum bitten ([`openUrl()`](#links-aus-deinem-widget-öffnen)),
+  und der Host prüft die Origin gegen dein `allowedOrigins` und öffnet nur während einer echten
+  Nutzerinteraktion. Geöffnet wird immer mit `noopener,noreferrer`, die Zielseite bekommt also
+  keinerlei Handle zurück auf den Campus.
 - Erhält niemals die echten ivCampus-Zugangsdaten der Endnutzerin/des Endnutzers, in keiner Form.
 - Alle Nachrichten werden gegen `event.source === window.parent` und, nach der ersten akzeptierten
   Nachricht, gegen eine fixierte erwartete Origin validiert — siehe
   [den Protokoll-Abschnitt](#das-protokoll-falls-du-dieses-sdk-nicht-verwendest) oben oder `src/sdk.ts` für
   die genaue Implementierung.
+
+**Ein Sicherheitsproblem gefunden?** Bitte melde es vertraulich — [SECURITY.md](SECURITY.md)
+beschreibt, was im Geltungsbereich liegt und wohin du schreibst. Bitte kein öffentliches Issue für
+Sicherheitsfehler.
 
 ### Build (für Beiträge zum SDK selbst)
 
@@ -520,15 +776,15 @@ ivCAMPUS is the place where people collaborate effectively. Some compare ivCAMPU
 **What is a widget?**
 SDK for building widgets that embed into [ivCampus](https://ivicos-campus.app) — inside a Room
 or the Personal Dashboard. A widget is any page you host at your own HTTPS URL; ivCampus embeds
-it in a sandboxed `<iframe>` and this SDK handles the handshake, context, resizing, and RPC
-transport between your page and the host.
+it in a sandboxed `<iframe>` and this SDK handles the handshake, context, and message transport
+between your page and the host. The host decides the size.
 
 This document is the complete guide for external developers: what a widget can and can't do,
 how to build one, and how to get it live on a real ivCampus org.
 
 ### An important tip before you begin
 
-This guide is detailed, but Coding-AI can read and understand it quickly and build a proof of concept in no time. This way, you can first test how your widget can be useful in ivCAMPUS without having to take action yourself right away. Give the AI the link to this page, tell it what function your widget should perform (e.g., display all tasks assigned to you and, on the widget’s back page, allow sorting by priority or creation date), and ask the AI to list all the data required to submit the widget using a “Copy” button. This way, your effort is minimal (based on experience, 5 minutes—2 for the prompt and 3 for submitting and testing). 
+This guide is detailed, but Coding-AI can read and understand it quickly and build a proof of concept in no time. This way, you can first test how your widget can be useful in ivCAMPUS without having to take action yourself right away. Give the AI the link to this page, tell it what function your widget should perform (e.g., display all tasks assigned to you and, on the widget’s back page, allow sorting by priority or creation date), and ask the AI to list all the data required to submit the widget using a “Copy” button. This way, your effort is minimal (based on experience, 5 minutes — 2 for the prompt and 3 for submitting and testing).
 
 ### Status — please read this first
 
@@ -658,9 +914,8 @@ sdk.onVisibilityChange((visible) => {
     }
 });
 
-// Content height is reported automatically via a ResizeObserver on document.body.
-// Only call this yourself if you need to override that (e.g. a deliberately fixed height).
-sdk.reportResize(320);
+// The host decides your size: your widget gets a fixed-size area, and your own page scrolls
+// inside it. Nothing to call for that - see "About your widget's size" below.
 ```
 
 `sdk.init()` resolves once the host has completed the handshake **and** pushed the first
@@ -780,21 +1035,40 @@ Every `on*` method returns an unsubscribe function; call it when your view goes 
 
 | Method | Returns | Notes |
 |---|---|---|
-| `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects after 10s if the host never answers. Calling it twice throws. |
+| `init(options)` | `Promise<WidgetContext>` | Announces the widget and resolves with the first context. Must be called before anything else. Rejects if the host fails to complete the handshake within 10s, or fails to follow it with a first context within a further 10s. Calling it twice throws. |
+| `init({ backFace: true })` | | Tells the host this widget also serves a back face at `<your iframe URL>/backside`, so it offers the flip control. |
+| `init({ displayModes })` | | Announces the display modes this widget can render, so the host offers the enlarge control (see [Display modes](#display-modes)). |
 | `getContext()` | `WidgetContext \| null` | The most recently received context. `null` until `init()` resolves — prefer the value `init()` gives you. |
 | `onContextChange(fn)` | `() => void` | Calls `fn(context)` on every context push. Returns an unsubscribe function. |
 | `onVisibilityChange(fn)` | `() => void` | Calls `fn(visible)` when the widget's panel is backgrounded or shown again. Backgrounded is **not** closed — pause polling and animation, don't tear down. Returns an unsubscribe function. |
 | `onSessionEnding(fn)` | `() => void` | Calls `fn()` shortly before the widget is torn down. Your last chance to flush unsaved state. Returns an unsubscribe function. |
-| `reportResize(height)` | `void` | Manually report content height in pixels. Usually unnecessary — see below. Repeated calls with the same height are ignored. |
+| `openUrl(url)` | `Promise<OpenUrlStatus>` | Asks the host to open `url` in a new tab — your widget is not allowed to do that itself (see [Opening links out of your widget](#opening-links-out-of-your-widget)). Resolves with `'opened'`, `'blocked'` or `'denied'`; a refusal is an answer, not an exception. Throws only on misuse: calling it before `init()` has resolved (before the handshake the SDK doesn't know the host's origin yet), or an empty URL. If the host never answers (an older host doesn't know the message), the call resolves `'denied'` after 5s. |
+| `supportsDisplayModes()` | `boolean` | Whether **this placement** offers more than one display mode. Read from the host's context, not from what you announced. |
+| `getDisplayMode()` | `DisplayMode` | The display mode the host last confirmed. `'default'` until it says otherwise. |
+| `requestDisplayMode(mode)` | `void` | Asks the host for a display mode. Returns nothing on purpose: the answer arrives at `onDisplayModeChange`, and the host may also change the mode on its own. Throws only if called before `init()` has resolved. |
+| `onDisplayModeChange(fn)` | `() => void` | Calls `fn(mode)` on every mode the host confirms — including ones nobody asked for, and refusals, which arrive as the mode you already had. Returns an unsubscribe function. |
+| `reportResize(height)` | `void` | Has no effect on layout: the host decides the size itself — see below. The message stays part of the protocol and is still sent, but the host ignores it. Kept for compatibility only. |
 | `destroy()` | `void` | Removes the message listener, disconnects the resize observer, drops all listeners. Call it if your page tears the widget down without a full reload (an SPA route change, for instance). |
 
 Also exported from the package: `SDK_VERSION` (the protocol version this build speaks) and the
-`WidgetContext` / `InitOptions` types.
+`WidgetContext` / `InitOptions` / `OpenUrlStatus` / `DisplayMode` types.
 
-**About resizing.** `init()` starts a `ResizeObserver` on `document.body` and reports height
-automatically, so most widgets never call `reportResize()` at all. Call it only to override that —
-for a deliberately fixed height, or when your real content sits in an absolutely-positioned element
-that `document.body` doesn't measure.
+**About your widget's size.** The host decides it, not you. Your widget is embedded in a
+fixed-size area, and if your content is taller, your own page scrolls inside it — exactly like any
+other embedded iframe. You don't have to do anything, or report anything, to get that.
+
+How large that area is depends on where your widget runs: on the Dashboard it is currently around
+350×294 CSS pixels; in a room it is the size of the attachment pane, which varies with the window.
+Three things follow from this:
+
+- **Design responsively.** Treat those numbers as today's state, not a promise.
+- **Don't switch off your own scrolling.** `body { overflow: hidden }` without a scrollable area of
+  your own makes content unreachable that would otherwise simply scroll.
+- **`height: 100%` and `100vh` work** as you'd expect — your widget has a real viewport.
+
+`init()` still starts a `ResizeObserver` on `document.body` and reports the height; the host just no
+longer uses it for layout. Earlier SDK versions were written against a host that grew the iframe to
+the reported height — that is no longer the case.
 
 **Handling a failed init.** `init()` rejects rather than hanging forever, so wrap it:
 
@@ -807,6 +1081,185 @@ try {
     document.body.textContent = 'This page runs as an ivCampus widget.';
 }
 ```
+
+### The back face
+
+A widget card in the dashboard can flip over. The front is your widget. The back is where you
+explain it — what it does, how to use it, what your filters mean, links to your own docs.
+
+Serve it at `/backside`, relative to the URL you registered:
+
+```
+registered iframe URL   https://example.com/my-widget
+your back face          https://example.com/my-widget/backside
+```
+
+Then tell the host it exists, from the **front** page:
+
+```ts
+const sdk = new WidgetSDK();
+const context = await sdk.init({ widgetId: 'my-widget', backFace: true });
+```
+
+Without `backFace: true` no flip control ever appears, so an existing widget is unaffected until
+it opts in. If you set it but do not serve `/backside`, users will see your 404 page on the back
+of the card — the host has no way to detect that.
+
+**The back page does not need this SDK.** A static HTML file is fine. If you want the theme,
+locale or the viewer's name there too, call `init()` from it as well and it receives the same
+context the front does.
+
+**Sign-in does not belong on the back face.** If your widget cannot be used without an account,
+show your sign-in on the **front** — that is the first thing a user sees, and signing in there
+turns the front into your widget. You are free to require a session on the back face as well; it
+is your page. But never make the back face the only way in, because a user has no reason to look
+there.
+
+**What belongs on the back:** guidelines and usage notes, what your widget does, links to your
+documentation or support, optionally a sign-*out* control or widget-specific settings.
+
+**What does not:** your primary content, anything a user needs in order to *use* the widget, and
+anything that assumes it is currently on screen. The host sends `visibility-change` to each face
+as the card turns, so pause polling when you are flipped away.
+
+**Size:** in a dashboard card the back face gets roughly **294px** of height (a 350×350 card less
+its 56px header). That fits a block of guidance and a link or two. It does not fit a multi-step
+form.
+
+### Sharing state between your two faces
+
+Your front and back pages are two separate documents in two separate iframes - not two views of
+one running script. Nothing in memory carries over between them; only something that actually
+crosses that boundary does.
+
+If you need state both faces agree on - most commonly "is this user signed in" - storage on your
+own origin is the way to do it: your back face lives at `/backside` on the same origin as your
+front by construction, so `localStorage` (or a cookie) written by one face is visible to the
+other.
+
+Two things trip people up here:
+
+**Reading it once at load isn't enough.** The back face stays mounted after the first flip - it
+is not re-created on every flip - so if the user signs out on one face while the other is still
+open, that other face won't notice unless it's listening. Same-origin sibling documents get a
+native `storage` event whenever one of them changes `localStorage` - listen for it to react live:
+
+```ts
+window.addEventListener('storage', (event) => {
+    if (event.key === 'my-widget-signed-in') {
+        // react to the *other* face's change - your own writes don't fire this event on you
+    }
+});
+```
+
+**Your widget is embedded on someone else's page, so its storage may be partitioned or blocked.**
+Browsers increasingly restrict storage for an iframe whose top-level page is a different site than
+the iframe's own origin - which describes every widget here. If `localStorage` isn't behaving the
+way you expect, the standards-based fix is the [Storage Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_Access_API):
+`document.requestStorageAccess()`, called from a real user gesture (a click, a form submit) - the
+host's iframe already carries the `allow-storage-access-by-user-activation` sandbox token needed
+for it to work.
+
+None of this is host-mediated. The host never sees, stores or forwards anything about your
+widget's own sign-in state - it only ever gives you the flip and the `visibility-change` message.
+
+### Opening links out of your widget
+
+An `<a target="_blank">` or a `window.open()` from inside your widget does not work. The host
+renders every widget in a sandboxed iframe without the `allow-popups` token, so the browser refuses
+both — no error in your own code, just this in the console:
+
+```
+Blocked opening 'https://…/work_packages/2001' in a new window because the
+request was made in a sandboxed frame whose 'allow-popups' permission is not set.
+```
+
+That is not going to change. Instead, ask the host to open the link — it is not sandboxed, and it
+opens it for you:
+
+```ts
+button.addEventListener('click', async () => {
+    const status = await sdk.openUrl(`https://your-openproject.example.com/work_packages/${id}`);
+
+    if (status === 'blocked') {
+        // The popup blocker did this. Offer a link the user can click themselves.
+        showManualLink(id);
+    }
+    if (status === 'denied') {
+        // Your configuration, not the user's mistake. Console, not UI.
+        console.error('[my-widget] host refused to open the URL');
+    }
+});
+```
+
+`openUrl()` always resolves — with one of three statuses:
+
+| `status` | What it means | What your widget should do |
+|---|---|---|
+| `opened` | The host opened the window. | Nothing. |
+| `denied` | Host policy refused: origin not declared, not `https:`, or no user gesture in effect. | A **developer** error. Log it to the console. Don't show the user a scary message — they did nothing wrong. |
+| `blocked` | Policy allowed it; the browser's popup blocker refused. | Show a manual affordance ("Open in OpenProject") the user can click themselves. |
+
+Three things you have to get right for this:
+
+**Declare the origin in your manifest.** Only origins listed in your submission's `allowedOrigins`
+can be opened — see [Submitting your widget](#submitting-your-widget). Your widget's own origin is
+always permitted and does not need declaring: it is already loaded in your frame, so opening it
+exposes nothing new. Anything else answers `denied`.
+
+**Call `openUrl()` from a click handler.** The host only opens while a real user gesture is in
+effect, and that lapses after a few seconds. From a `setTimeout`, a `useEffect` or a data-load
+callback you will reliably get `denied`. That is deliberate: it makes popup spam physically
+impossible without anyone maintaining counters or rate limits.
+
+**Wait for `init()`.** Before the handshake the SDK doesn't know the host's origin yet and would
+have to post the URL to `'*'`, so `openUrl()` throws there rather than sending it untargeted. In
+practice this never comes up: you already await `init()` before rendering anything clickable.
+
+### Display modes
+
+A dashboard card gives a widget about 350x294 pixels. For a list — work packages, tickets,
+appointments — that is a teaser. A widget can announce that it also renders an enlarged
+layout, and the host will offer the user a control to switch:
+
+```js
+const sdk = new WidgetSDK();
+await sdk.init({ widgetId: 'my-widget', displayModes: ['default', 'expanded'] });
+
+sdk.onDisplayModeChange((mode) => {
+    // The host has already resized the iframe by the time this runs.
+    document.documentElement.dataset.displayMode = mode;
+});
+```
+
+**The host draws the control, not you.** Announcing `displayModes` is the whole opt-in;
+adding your own button means the user sees two.
+
+**Prefer CSS to JavaScript.** The host resizes your iframe, so a media query does the work
+with no messages at all — and the same rule then makes your widget use a large room
+placement well, which no display mode is involved in:
+
+```css
+@media (min-width: 620px) { .list { display: grid; grid-template-columns: 1fr 1fr; } }
+```
+
+Announce `'expanded'` only if your layout actually changes. A widget that looks identical at
+both sizes gets a control that appears to do nothing.
+
+| Method | Returns | Meaning |
+| --- | --- | --- |
+| `init({ displayModes })` | — | Announces the modes this widget can render. |
+| `supportsDisplayModes()` | `boolean` | Does this **placement** offer more than one mode? |
+| `getDisplayMode()` | `DisplayMode` | The mode the host last confirmed. |
+| `requestDisplayMode(mode)` | `void` | A request, not a guarantee. |
+| `onDisplayModeChange(fn)` | `() => void` | Fires on every confirmation; returns an unsubscribe. |
+
+`supportsDisplayModes()` asks about the placement, not about your widget: a room placement is
+already large and offers nothing to switch to. `requestDisplayMode()` exists for expanding in
+response to something the user clicked inside your widget — the host still decides, may
+refuse, and may collapse you again at any time, which is why only `onDisplayModeChange`
+should change your layout.
 
 ### Hosting requirements
 
@@ -858,15 +1311,21 @@ does get real storage — the host grants `allow-same-origin`, so your page keep
 rather than an opaque one — but it is a *separate bucket* from the one the same page uses when
 someone visits your site directly. State does not carry across, and it isn't durable.
 
-**The Storage Access API is not an escape hatch.** The host's sandbox does not include
-`allow-storage-access-by-user-activation`, so `document.requestStorageAccess()` is unavailable to
-widgets. Design for partitioned storage rather than planning to request your way out of it.
+**The Storage Access API narrows this, but doesn't remove it.** The host's iframe carries the
+`allow-storage-access-by-user-activation` sandbox token, so `document.requestStorageAccess()` is
+available to widgets — but only from a real user gesture (a click, a form submit), and only in
+browsers that implement the API at all. Design for partitioned storage as the default case; treat a
+granted request as something you win back after a click, not something present before your widget
+renders its first frame. See [Sharing state between your two faces](#sharing-state-between-your-two-faces)
+above for the concrete pattern.
 
 **Interactive login inside a widget is hard, by design.** `allow-popups` is not granted, so
 `window.open` is blocked; `allow-top-navigation` is not granted either, so you can't redirect the
 parent page. That leaves redirecting *within your own iframe*, which does work — but most identity
 providers (Google and Microsoft among them) refuse to be framed at all, so a standard OAuth redirect
-to them simply won't render.
+to them simply won't render. [`openUrl()`](#opening-links-out-of-your-widget) does not help here: the
+host opens with `noopener`, so the opened window cannot report anything back to you. It is a way out,
+not an OAuth popup.
 
 **What to do instead.** Prefer an auth model that needs no interactive login in the frame: hold
 credentials in memory for the widget's lifetime and re-establish them on each load, and treat every
@@ -883,10 +1342,12 @@ message shapes:
 **On load, send:**
 ```js
 window.parent.postMessage(
-    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2 },  // or import SDK_VERSION
+    { source: 'ivicos-widget-sdk', type: 'ready', widgetId: 'my-widget', sdkVersion: 2, hasBackFace: true },  // or import SDK_VERSION
     '*' // unavoidable here - you don't know the host's origin yet, and this message carries no secrets
 );
 ```
+
+The `hasBackFace` field is optional and omitted entirely when the widget serves no back face. Set it to `true` and the host loads the back face from `<iframeUrl>/backside`, preserving any query string and hash.
 
 **Listen for the host's reply, and pin its origin from the first accepted message:**
 ```js
@@ -914,11 +1375,32 @@ window.addEventListener('message', (event) => {
     if (msg.type === 'session-ending') {
         // the widget's session is ending; clean up and prepare for destruction
     }
+    if (msg.type === 'open-url-result') {
+        // msg.requestId: the id you sent; msg.status: 'opened' | 'blocked' | 'denied'
+    }
 });
 ```
 
-**Report your content height whenever it changes** (or the host defaults to a small fixed size):
+**To open an external URL, ask the host** (see [Opening links out of your
+widget](#opening-links-out-of-your-widget) for why, and for what the statuses mean). Generate a
+fresh `requestId` per request so you can tell several in-flight answers apart, and send it from a
+real click handler:
+
 ```js
+const requestId = crypto.randomUUID(); // fallback where unavailable: `${Date.now()}-${Math.random().toString(36).slice(2)}`
+window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'open-url', requestId, url: 'https://example.com/a' }, hostOrigin);
+// The answer comes back as 'open-url-result' with the same requestId. If it never comes, the host
+// predates this message - treat that as 'denied' after a few seconds.
+```
+
+Both messages are purely additive: `SDK_VERSION` stays at **2**. A host that doesn't know
+`open-url` ignores it exactly as silently as it already ignores `resize`.
+
+**You don't need to manage your size.** The host gives your page a fixed-size area to live in, and
+your page scrolls inside it normally. The `resize` message is still part of the protocol and is
+accepted, but ignored — you don't have to send it:
+```js
+// Optional, and has no effect on layout:
 window.parent.postMessage({ source: 'ivicos-widget-sdk', type: 'resize', height: document.body.scrollHeight }, hostOrigin);
 ```
 
@@ -934,16 +1416,14 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 
    | Field | Constraint |
    |---|---|
-   | Widget ID | Lowercase letters, numbers, and hyphens only; must be unique across the entire registry and **cannot be changed after submission** |
-   | Name | Free text, to be displayed as the widget name in the integrations overview |
-   | Website URL | A link to a webpage that explains your app and/or widget (possibly also your homepage) |
-   | Version | Must be in the format `X.Y.Z` (e.g., `1.0.0`) — currently not validated against anything; only this format is required |
-   | Widget URL | Your HTTPS iframe URL |
-   | Icon URL | Any accessible URL; not validated as an actual image—please use responsibly |
-   | Description | Free text that appears on hover and explains the widget’s function |
-   | Placement | Room, Personal Dashboard, or both—at least one is required |
-
-Translated with DeepL.com (free version)
+   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
+   | Name | free text; shown as the widget's name in the integrations overview |
+   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
+   | Widget URL | your HTTPS iframe URL |
+   | Icon URL | publicly reachable HTTPS URL to your icon |
+   | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
+   | Placement | Room, Personal dashboard, or both — at least one is required |
+   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
 
 2. The submission is immediately visible to the sponsoring org and to no one else. It can't be
    enabled or used by anyone until it has been reviewed.
@@ -963,12 +1443,17 @@ Translated with DeepL.com (free version)
    description, placements) or withdraw it entirely. The Widget ID is the exception: it is fixed,
    and a different ID is a different widget.
 
+**`allowedOrigins` is reviewed by a human.** The field is not a formality: approving your widget is
+also approving that it may send users to exactly those origins. Which is why **changing
+`allowedOrigins` after approval sends the widget back to Pending review** and it stops rendering
+until it is approved again. So list every origin you need up front rather than adding them one at a
+time later.
+
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
-the SDK) must match, character for character.** If they don't, nothing errors on submission —
-the widget will simply sit there failing to load, timing out after 10 seconds with a generic
-"this widget did not respond" message and no further detail about why. This is the single most
-common way a correctly-built widget appears broken.
+the SDK) must match, character for character.** If they don't, the widget won't load: it times out
+after 10 seconds with a generic "this widget did not respond" message. This is the single most
+common way a correctly-built widget appears broken — check those two values first.
 
 ### Local development
 
@@ -987,13 +1472,25 @@ Test your widget against a real host before submitting, rather than debugging bl
 
 ### Security model
 
-- Runs inside a `sandbox="allow-scripts allow-forms allow-same-origin"` iframe the host
-  controls. Notably **not** granted: popups (`window.open` is blocked), top-level navigation of
-  the parent page, and no access to any ivCampus cookie/localStorage/DOM outside your own iframe.
+- Runs inside a `sandbox="allow-scripts allow-forms allow-same-origin
+  allow-storage-access-by-user-activation"` iframe the host controls. That last token only lets
+  your widget call `document.requestStorageAccess()` from a real user gesture (see
+  [Sharing state between your two faces](#sharing-state-between-your-two-faces)) — it grants
+  nothing else. Still notably **not** granted: popups (`window.open` is blocked), top-level
+  navigation of the parent page, and no access to any ivCampus cookie/localStorage/DOM outside
+  your own iframe.
+- **External links are opened by the host, not by your widget.** That is deliberate: your widget is
+  never granted the right to open windows — it may only ask ([`openUrl()`](#opening-links-out-of-your-widget)),
+  and the host checks the origin against your `allowedOrigins` and opens only during a real user
+  gesture. The open always uses `noopener,noreferrer`, so the opened page gets no handle back to
+  the campus.
 - Never receives the end user's real ivCampus credentials, in any form.
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)
   above, or `src/sdk.ts` for the exact implementation.
+
+**Found a security problem?** Report it privately — see [SECURITY.md](SECURITY.md) for what is in
+scope and where to send it. Please don't open a public issue for security bugs.
 
 ### Build (for contributing to the SDK itself)
 

@@ -2,3 +2,7 @@ node_modules
 .DS_Store
 *.log
 docs/*
+# Local-only Claude Code project instructions
+CLAUDE.md
+.claude/
+.superpowers/

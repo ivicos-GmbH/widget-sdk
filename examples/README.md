@@ -17,7 +17,8 @@ Daten, die jedes freigegebene Widget ohne Berechtigung, Token oder Scope erhält
 
 Nimm `hello-widget`, wenn du die Mechanik sehen oder schnell etwas Lauffähiges registrieren willst.
 Nimm `sdk-widget` als Ausgangspunkt für ein echtes Widget: Das SDK übernimmt Origin-Pinning,
-Handshake, den 10-Sekunden-Timeout und die automatische Höhenmeldung für dich.
+Handshake und den 10-Sekunden-Timeout für dich. Um die Größe musst du dich nicht kümmern — die
+bestimmt der Host, und deine eigene Seite scrollt in dem Bereich, den sie bekommt.
 
 ### `hello-widget` ausprobieren
 
@@ -51,6 +52,14 @@ HTML-Seite mit einem `<div id="root">` ein.
 
 Die vollständige Feldbeschreibung steht unter [Den Kontext nutzen](../README.md#den-kontext-nutzen),
 die Methodenliste unter [API-Referenz](../README.md#api-referenz).
+
+Das Beispiel registriert eine Rückseite: `main.ts` setzt `backFace: true` in `init()`, und
+`backside.html` liegt als kopierbare Datei daneben. Sie ist absichtlich reines HTML — kein SDK, kein
+Handshake — um zu zeigen, dass die Rückseite das SDK nicht braucht. Beim Hosten musst du sie unter
+`<deine-widget-url>/backside` ausliefern (Query-String und Hash bleiben erhalten). Zum Ansehen ohne
+Campus: `backside.html` direkt im Browser öffnen oder statisch ausliefern, z. B.
+`python3 -m http.server --directory examples/sdk-widget` und dann `http://localhost:8000/backside.html`
+aufrufen.
 
 ---
 
@@ -99,3 +108,11 @@ the main README, and load the bundle from an HTML page containing a `<div id="ro
 
 The full field-by-field description lives under [Using the context](../README.md#using-the-context),
 and the method list under [API reference](../README.md#api-reference).
+
+This example opts into a back face: `main.ts` passes `backFace: true` to `init()`, and
+`backside.html` sits alongside it as a copyable file. It is deliberately plain HTML — no SDK, no
+handshake — to show the back face does not require the SDK. When you host the widget, serve that file
+at `<your-widget-url>/backside` (query string and hash preserved). To preview without Campus, open
+`backside.html` directly in a browser or serve the folder statically, e.g.
+`python3 -m http.server --directory examples/sdk-widget` then visit
+`http://localhost:8000/backside.html`.

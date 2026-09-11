@@ -1,8 +1,9 @@
-import { type InitOptions, type WidgetContext } from './types.js';
+import { type DisplayMode, type InitOptions, type OpenUrlStatus, type WidgetContext } from './types.js';
 export declare class WidgetSDK {
     private widgetId;
     private hostOrigin;
     private context;
+    private displayMode;
     private handshakeComplete;
     private handshakeResolve;
     private contextListeners;
@@ -10,13 +11,20 @@ export declare class WidgetSDK {
     private sessionEndingListeners;
     private resizeObserver;
     private lastReportedHeight;
+    private openUrlResolvers;
+    private displayModeListeners;
     private onMessage;
     init(options: InitOptions): Promise<WidgetContext>;
     getContext(): WidgetContext | null;
+    supportsDisplayModes(): boolean;
+    getDisplayMode(): DisplayMode;
     onContextChange(listener: (context: WidgetContext) => void): () => void;
     onVisibilityChange(listener: (visible: boolean) => void): () => void;
     onSessionEnding(listener: () => void): () => void;
     reportResize(height: number): void;
+    openUrl(url: string): Promise<OpenUrlStatus>;
+    requestDisplayMode(mode: DisplayMode): void;
+    onDisplayModeChange(listener: (mode: DisplayMode) => void): () => void;
     destroy(): void;
     private send;
     private completeHandshake;
