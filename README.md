@@ -675,10 +675,23 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Name | Freitext; wird als Name des Widgets in der Übersicht der Integrationen angezeigt |
    | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
    | Widget-URL | deine HTTPS-Iframe-URL |
+   | Webseite | optional; HTTPS-Link auf eine Seite, die erklärt, was dein Widget tut — siehe unten |
    | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
    | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
    | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+
+   **Zur Webseite.** Bevor ein Manager dein Widget für seine gesamte Organisation aktiviert, will er
+   wissen, was er da einschaltet. Genau dafür ist dieses Feld da: Gibst du eine Webseite an, wird der
+   Name deines Widgets in der Übersicht der Integrationen zu einem Link auf diese Seite — dieselbe
+   Stelle, an der auch Zammad auf seine eigene Seite verweist. Lässt du das Feld leer, bleibt der Name
+   einfacher Text; es geht nichts kaputt, du verschenkst nur die Gelegenheit, dich zu erklären.
+
+   Verweise dabei **nicht** auf deine Widget-URL. Diese Seite als eigenständige Seite zu öffnen ist die
+   einzige Ansicht deines Widgets, die garantiert nicht funktioniert: `WidgetSDK.init()` bricht sofort
+   ab, wenn `window.parent === window` ist, es gibt also weder Handshake noch Kontext. Der Manager sähe
+   einen Ladezustand oder eine leere Karte. Eine kurze Seite, die in zwei Sätzen erklärt, was dein
+   Widget tut, ist mehr wert als jede Demo, die nicht läuft.
 
 2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
    kann von niemandem aktiviert oder genutzt werden, bevor sie geprüft wurde.
@@ -1420,10 +1433,23 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    | Name | free text; shown as the widget's name in the integrations overview |
    | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
    | Widget URL | your HTTPS iframe URL |
+   | Website | optional; https link to a page explaining what your widget does — see below |
    | Icon URL | publicly reachable HTTPS URL to your icon |
    | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
    | Placement | Room, Personal dashboard, or both — at least one is required |
    | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+
+   **About the website.** Before a manager switches your widget on for their whole organisation, they
+   want to know what they are switching on. That is what this field is for: give a website and your
+   widget's name becomes a link to it in the integrations list — the same place Zammad links to its own
+   site. Leave it out and the name stays plain text; nothing breaks, you just give up the chance to
+   explain yourself.
+
+   Do **not** point it at your widget URL. Opened as a standalone page, that is the one view of your
+   widget guaranteed not to work: `WidgetSDK.init()` throws immediately when `window.parent === window`,
+   so there is no handshake and no context. The manager would see a loading state or an empty card. A
+   short page explaining in two sentences what your widget does is worth more than a demo that doesn't
+   run.
 
 2. The submission is immediately visible to the sponsoring org and to no one else. It can't be
    enabled or used by anyone until it has been reviewed.
