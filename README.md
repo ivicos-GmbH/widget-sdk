@@ -455,6 +455,14 @@ Einreichung dürfen geöffnet werden — siehe [Dein Widget einreichen](#dein-wi
 eigene Origin deines Widgets ist immer erlaubt und muss nicht deklariert werden: Sie ist ohnehin
 schon in deinem Frame geladen. Alles andere ergibt `denied`.
 
+Musst du auf viele Subdomains deiner eigenen Domain verlinken (etwa eine Adresse pro Kunde), trage
+deine Domain im Einreichungsformular im Feld „Alle Subdomains deiner Domain" ein; sie wird als
+Platzhalter `https://*.example.com` in `allowedOrigins` gespeichert. Er deckt jede Subdomain von `example.com` in
+jeder Tiefe ab (`kunde-a.example.com`, `a.b.example.com`), aber nicht `example.com` selbst — die
+trägst du bei Bedarf als eigene Zeile ein. Pro Widget ist ein Platzhalter erlaubt, neben beliebigen
+exakten Origins. Endungen, unter denen jeder registrieren oder hosten kann (`*.de`, `*.co.uk`,
+`*.vercel.app`, `*.github.io`), werden abgelehnt.
+
 **Rufe `openUrl()` aus einem Klick-Handler auf.** Der Host öffnet nur, solange eine echte
 Nutzerinteraktion wirkt, und die ist nach wenigen Sekunden vorbei. Aus einem `setTimeout`, einem
 `useEffect` oder dem Callback eines Daten-Ladevorgangs bekommst du zuverlässig `denied`. Das ist
@@ -679,7 +687,8 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
    | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
-   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Alle Subdomains deiner Domain | optional; eine Domain, z. B. `example.com`, gespeichert als `https://*.example.com` in `allowedOrigins`; zählt als einer der 10 Einträge |
 
    **Zur Webseite.** Bevor ein Manager dein Widget für seine gesamte Organisation aktiviert, will er
    wissen, was er da einschaltet. Genau dafür ist dieses Feld da: Gibst du eine Webseite an, wird der
@@ -716,7 +725,8 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
 deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
 Deshalb gilt: **Änderst du `allowedOrigins` nach der Freigabe, geht das Widget zurück auf
 „Ausstehende Überprüfung"** und rendert bis zur erneuten Freigabe nicht mehr. Nimm also lieber gleich
-alle Origins auf, die du brauchst, statt sie später einzeln nachzureichen.
+alle Origins auf, die du brauchst, statt sie später einzeln nachzureichen. Ein Platzhalter wird
+besonders genau geprüft: Er muss auf einer Domain stehen, die dir gehört.
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
@@ -1221,6 +1231,14 @@ can be opened — see [Submitting your widget](#submitting-your-widget). Your wi
 always permitted and does not need declaring: it is already loaded in your frame, so opening it
 exposes nothing new. Anything else answers `denied`.
 
+If you need to link to many subdomains of your own domain (one address per customer, say), enter
+your domain in the submission form's "All subdomains of your domain" field; it is stored as the
+wildcard `https://*.example.com` in `allowedOrigins`. It covers every subdomain of `example.com` at any depth
+(`customer-a.example.com`, `a.b.example.com`) but not `example.com` itself — list that on its own
+line if you need it. One wildcard is allowed per widget, next to any number of exact origins.
+Endings anyone can register or host under (`*.de`, `*.co.uk`, `*.vercel.app`, `*.github.io`) are
+refused.
+
 **Call `openUrl()` from a click handler.** The host only opens while a real user gesture is in
 effect, and that lapses after a few seconds. From a `setTimeout`, a `useEffect` or a data-load
 callback you will reliably get `denied`. That is deliberate: it makes popup spam physically
@@ -1437,7 +1455,8 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    | Icon URL | publicly reachable HTTPS URL to your icon |
    | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
    | Placement | Room, Personal dashboard, or both — at least one is required |
-   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | All subdomains of your domain | optional; one domain, e.g. `example.com`, stored as `https://*.example.com` in `allowedOrigins`; counts as one of the 10 entries |
 
    **About the website.** Before a manager switches your widget on for their whole organisation, they
    want to know what they are switching on. That is what this field is for: give a website and your
@@ -1473,7 +1492,7 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 also approving that it may send users to exactly those origins. Which is why **changing
 `allowedOrigins` after approval sends the widget back to Pending review** and it stops rendering
 until it is approved again. So list every origin you need up front rather than adding them one at a
-time later.
+time later. A wildcard gets a closer look: it has to sit on a domain you own.
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
