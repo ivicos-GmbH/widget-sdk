@@ -456,7 +456,8 @@ eigene Origin deines Widgets ist immer erlaubt und muss nicht deklariert werden:
 schon in deinem Frame geladen. Alles andere ergibt `denied`.
 
 Musst du auf viele Subdomains deiner eigenen Domain verlinken (etwa eine Adresse pro Kunde), trage
-einen Platzhalter wie `https://*.example.com` ein. Er deckt jede Subdomain von `example.com` in
+deine Domain im Einreichungsformular im Feld „Alle Subdomains deiner Domain" ein; sie wird als
+Platzhalter `https://*.example.com` in `allowedOrigins` gespeichert. Er deckt jede Subdomain von `example.com` in
 jeder Tiefe ab (`kunde-a.example.com`, `a.b.example.com`), aber nicht `example.com` selbst — die
 trägst du bei Bedarf als eigene Zeile ein. Pro Widget ist ein Platzhalter erlaubt, neben beliebigen
 exakten Origins. Endungen, unter denen jeder registrieren oder hosten kann (`*.de`, `*.co.uk`,
@@ -686,7 +687,8 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
    | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
-   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query), davon höchstens ein Subdomain-Platzhalter wie `https://*.example.com`, die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Alle Subdomains deiner Domain | optional; eine Domain, z. B. `example.com`, gespeichert als `https://*.example.com` in `allowedOrigins`; zählt als einer der 10 Einträge |
 
    **Zur Webseite.** Bevor ein Manager dein Widget für seine gesamte Organisation aktiviert, will er
    wissen, was er da einschaltet. Genau dafür ist dieses Feld da: Gibst du eine Webseite an, wird der
@@ -1229,8 +1231,9 @@ can be opened — see [Submitting your widget](#submitting-your-widget). Your wi
 always permitted and does not need declaring: it is already loaded in your frame, so opening it
 exposes nothing new. Anything else answers `denied`.
 
-If you need to link to many subdomains of your own domain (one address per customer, say), add a
-wildcard such as `https://*.example.com`. It covers every subdomain of `example.com` at any depth
+If you need to link to many subdomains of your own domain (one address per customer, say), enter
+your domain in the submission form's "All subdomains of your domain" field; it is stored as the
+wildcard `https://*.example.com` in `allowedOrigins`. It covers every subdomain of `example.com` at any depth
 (`customer-a.example.com`, `a.b.example.com`) but not `example.com` itself — list that on its own
 line if you need it. One wildcard is allowed per widget, next to any number of exact origins.
 Endings anyone can register or host under (`*.de`, `*.co.uk`, `*.vercel.app`, `*.github.io`) are
@@ -1452,7 +1455,8 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    | Icon URL | publicly reachable HTTPS URL to your icon |
    | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
    | Placement | Room, Personal dashboard, or both — at least one is required |
-   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query), at most one of them a subdomain wildcard like `https://*.example.com`, your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | All subdomains of your domain | optional; one domain, e.g. `example.com`, stored as `https://*.example.com` in `allowedOrigins`; counts as one of the 10 entries |
 
    **About the website.** Before a manager switches your widget on for their whole organisation, they
    want to know what they are switching on. That is what this field is for: give a website and your
