@@ -746,12 +746,6 @@ Die Status, die du unter **Deine Einreichungen** und in der Liste der zusätzlic
 Ein gesperrtes Widget wird überall dort nicht mehr gerendert, wo es aktiviert war (siehe
 [Status — Bitte dies zuerst lesen](#status--bitte-dies-zuerst-lesen)).
 
-**Aus der eigenen Organisation einreichen.** Ein Manager oder Owner jeder ivCampus-Organisation kann
-dasselbe Formular nutzen. Diese Einreichung geht direkt auf **Ausstehende Überprüfung**, ist nur für
-diese Organisation sichtbar und lässt sich vor der Freigabe nicht ausprobieren; eine abgelehnte wird
-**Gesperrt**. Einen **Bearbeiten**-Button gibt es dafür auch nicht. Der Weg über die
-Test-Organisation ist der bessere.
-
 **`allowedOrigins` wird von einem Menschen geprüft.** Das Feld ist keine Formalie: Mit der Freigabe
 deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
 Jede Änderung nach der Freigabe geht erneut durch die Prüfung. Nimm also lieber gleich alle Origins
@@ -1539,11 +1533,6 @@ The statuses you can see under **Your submissions** and in the list of additiona
 
 A suspended widget stops rendering everywhere it was enabled (see
 [Status — please read this first](#status--please-read-this-first)).
-
-**Submitting from your own organisation.** A manager or owner of any ivCampus organisation can use
-the same form. That submission goes straight to **Pending review**, is visible only to that
-organisation, and can't be tried out before it is approved; a denied one becomes **Suspended**.
-There is no **Edit** button for it either. The testing organisation is the better way in.
 
 **`allowedOrigins` is reviewed by a human.** The field is not a formality: approving your widget is
 also approving that it may send users to exactly those origins. Every change after approval goes
