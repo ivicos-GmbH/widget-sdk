@@ -721,6 +721,10 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    | Freigeben | **Freigegeben**: jede Organisation kann es aktivieren, in den registrierten Placements |
    | Ablehnen | zurück auf **Im Test (nur diese Organisation)**; korrigiere es und reiche es erneut zur Prüfung ein |
 
+   Eine prüfende Person probiert dein Widget in einer Vorschau mit Platzhalterdaten aus („Preview
+   user“, „Preview room“) statt mit den Daten echter Nutzer:innen. Es muss also auch mit diesen Werten
+   funktionieren und gut aussehen.
+
    Die Prüfung erfolgt manuell, und eine Statusänderung löst keine Benachrichtigung aus — sieh also
    unter **Deine Einreichungen** nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu)
    nach, wenn du schon länger wartest.
@@ -787,8 +791,9 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
 - **Externe Links öffnet der Host, nicht dein Widget.** Das ist Absicht: Dein Widget erhält nie das
   Recht, Fenster zu öffnen — es darf nur darum bitten ([`openUrl()`](#links-aus-deinem-widget-öffnen)),
   und der Host prüft die Origin gegen dein `allowedOrigins` und öffnet nur während einer echten
-  Nutzerinteraktion. Geöffnet wird immer mit `noopener,noreferrer`, die Zielseite bekommt also
-  keinerlei Handle zurück auf den Campus.
+  Nutzerinteraktion. Der Host löscht `window.opener`, bevor die Seite lädt, die Zielseite bekommt
+  also keinerlei Handle zurück auf den Campus. Sie kann die Campus-Origin als Referrer sehen, aber
+  nicht den Pfad.
 - Erhält niemals die echten ivCampus-Zugangsdaten der Endnutzerin/des Endnutzers, in keiner Form.
 - Alle Nachrichten werden gegen `event.source === window.parent` und, nach der ersten akzeptierten
   Nachricht, gegen eine fixierte erwartete Origin validiert — siehe
@@ -1510,6 +1515,9 @@ widget to production. You never submit to production yourself.
    | Approve | **Approved**: every organisation can turn it on, in the placements you registered for |
    | Deny | back to **Testing (this org only)**; fix it and submit it for review again |
 
+   A reviewer tries your widget in a preview with placeholder data ("Preview user", "Preview room")
+   instead of a real user's details, so it must still work and look right with those values.
+
    Review is manual and nothing notifies you when the status changes, so check **Your submissions**,
    or ask at [support@ivicos.eu](mailto:support@ivicos.eu) if you have been waiting.
 
@@ -1573,8 +1581,8 @@ Test your widget against a real host before submitting, rather than debugging bl
 - **External links are opened by the host, not by your widget.** That is deliberate: your widget is
   never granted the right to open windows — it may only ask ([`openUrl()`](#opening-links-out-of-your-widget)),
   and the host checks the origin against your `allowedOrigins` and opens only during a real user
-  gesture. The open always uses `noopener,noreferrer`, so the opened page gets no handle back to
-  the campus.
+  gesture. The host clears `window.opener` before the page loads, so the opened page gets no handle
+  back to the campus. It can see the campus origin as the referrer, but not the path.
 - Never receives the end user's real ivCampus credentials, in any form.
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)
