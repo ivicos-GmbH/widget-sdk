@@ -75,7 +75,7 @@ Meldet die Seite, dass das Widget seit dem Öffnen geändert wurde, lade neu und
 
 ### Die Entwickler:innen informieren
 
-Das passiert jetzt automatisch. Die Entwickler:innen bekommen eine E-Mail, wenn du freigibst, wiederherstellst, ablehnst, sperrst oder ein Widget importierst, und du bekommst eine, wenn etwas in die Warteschlange kommt. E-Mails gibt es nur in der Testumgebung und in der Produktion. Wer das Widget angelegt hat, ist die Kontaktperson, egal wer auf **Zur Prüfung einreichen** geklickt hat. Die E-Mail geht an die Adresse des Kontos oder, falls gesetzt, an eine Benachrichtigungsadresse, die nur die Person selbst sehen kann. Die Freigabe in der Testumgebung sagt, dass das Widget für Kund:innen noch nicht live ist; beim Import folgt eine weitere E-Mail.
+Das passiert jetzt automatisch. Die Entwickler:innen bekommen eine E-Mail, wenn du freigibst, wiederherstellst, ablehnst, sperrst, löschst oder ein Widget importierst, und du bekommst eine, wenn etwas in die Warteschlange kommt. E-Mails gibt es nur in der Testumgebung und in der Produktion. Wer das Widget angelegt hat, ist die Kontaktperson, egal wer auf **Zur Prüfung einreichen** geklickt hat. Die E-Mail geht an die Adresse des Kontos oder, falls gesetzt, an eine Benachrichtigungsadresse, die nur die Person selbst sehen kann. Die Freigabe in der Testumgebung sagt, dass das Widget für Kund:innen noch nicht live ist; beim Import folgt eine weitere E-Mail.
 
 **Ablehnen** und **Sperren** verlangen eine Begründung (höchstens 1000 Zeichen). Die Entwickler:innen lesen sie im Wortlaut in der E-Mail, schreibe sie also so, dass sie ohne Rückfrage verständlich ist. **Löschen** hat keine Begründung. Schlägt dort die E-Mail fehl, steht das nur in den Logs, ohne Warnung.
 
@@ -184,7 +184,7 @@ If the page says the widget changed since you opened it, reload and review the n
 
 ### Telling the developer
 
-This is automatic now. The developer gets an email when you approve, restore, deny, suspend or import a widget, and you get one when something enters the queue. Emails are on only for the test environment and production. The widget's creator is the contact, whoever clicked **Submit for review**. The email goes to the account address, or to a notification address if the creator set one, which nobody else can see. The approval on the test environment says the widget isn't live for customers yet; another email follows on import.
+This is automatic now. The developer gets an email when you approve, restore, deny, suspend, delete or import a widget, and you get one when something enters the queue. Emails are on only for the test environment and production. The widget's creator is the contact, whoever clicked **Submit for review**. The email goes to the account address, or to a notification address if the creator set one, which nobody else can see. The approval on the test environment says the widget isn't live for customers yet; another email follows on import.
 
 **Deny** and **Suspend** require a reason (up to 1000 characters). The developer reads it word for word in the email, so write it to be clear without a follow-up. **Delete** has no reason. If its email fails, it only goes to the logs, with no warning.
 
