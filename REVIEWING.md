@@ -75,7 +75,11 @@ Meldet die Seite, dass das Widget seit dem Öffnen geändert wurde, lade neu und
 
 ### Die Entwickler:innen informieren
 
-Eine Statusänderung löst keine Benachrichtigung aus, und **Ablehnen** hat kein Feld für eine Begründung. Schreibe deshalb nach jeder Entscheidung von support@ivicos.eu aus. Bei einer Ablehnung nennst du, was geändert werden muss:
+Das passiert jetzt automatisch. Die Entwickler:innen bekommen eine E-Mail, wenn du freigibst, wiederherstellst, ablehnst, sperrst oder ein Widget importierst, und du bekommst eine, wenn etwas in die Warteschlange kommt. E-Mails gibt es nur in der Testumgebung und in der Produktion. Wer das Widget angelegt hat, ist die Kontaktperson, egal wer auf **Zur Prüfung einreichen** geklickt hat. Die E-Mail geht an die Adresse des Kontos oder, falls gesetzt, an eine Benachrichtigungsadresse, die nur die Person selbst sehen kann. Die Freigabe in der Testumgebung sagt, dass das Widget für Kund:innen noch nicht live ist; beim Import folgt eine weitere E-Mail.
+
+**Ablehnen** und **Sperren** verlangen eine Begründung (höchstens 1000 Zeichen). Die Entwickler:innen lesen sie im Wortlaut in der E-Mail, schreibe sie also so, dass sie ohne Rückfrage verständlich ist. **Löschen** hat keine Begründung. Schlägt dort die E-Mail fehl, steht das nur in den Logs, ohne Warnung.
+
+**Nur von Hand schreiben, wenn die gelbe Warnleiste erscheint.** Sie erscheint nach einer Entscheidung oder einem Import, wenn die Entwickler:innen nicht per E-Mail erreicht werden konnten oder keine Kontaktperson bekannt ist. Schreibe dann von support@ivicos.eu aus, bei einer Ablehnung zum Beispiel so:
 
 > Betreff: Dein Widget „NAME“: Änderungen nötig
 >
@@ -91,12 +95,13 @@ Eine Statusänderung löst keine Benachrichtigung aus, und **Ablehnen** hat kein
 
 Nur freigegebene Widgets lassen sich exportieren.
 
-1. **Exportieren:** Öffne das freigegebene Widget in der Testumgebung und klicke auf **Exportieren**. Du erhältst eine JSON-Datei.
+1. **Exportieren:** Öffne das freigegebene Widget in der Testumgebung und klicke auf **Exportieren**. Du erhältst eine JSON-Datei. Sie enthält unter `developerContact` die persönliche Adresse und die Sprache der Entwickler:innen. Gib die Datei nicht weiter und lösche sie nach dem Import.
 2. **Prüf-Organisation der Produktion:** Melde dich in der Produktion an und wechsle in die Prüf-Organisation.
 3. **Importieren:** Klicke in **Externe Widgets** auf **Widget importieren** und wähle die Datei aus.
 4. **Lies den Dialog:** Er zeigt jedes Feld. Beachte diese Hinweise:
    - **Ersetzt das vorhandene Widget:** Prüfe die aufgeführten Änderungen.
    - **Origin fehlt in der Frame-Allowlist:** Lass die Origin von einer Entwicklerin oder einem Entwickler ergänzen und den Client neu ausrollen. Sonst bleibt das Widget leer, sobald die Frame-Richtlinie erzwungen wird.
+   - **Wer benachrichtigt wird:** Der Dialog nennt, wer per E-Mail erfährt, dass das Widget live ist. Steht dort, dass niemand benachrichtigt wird, schreibe selbst.
    - **ID ist reserviert:** Der Import ist nicht möglich, auch wenn das vorhandene Widget gelöscht wurde. Das Widget muss eine neue ID erhalten, und die Entwickler:innen müssen sie auch in ihrer Seite ändern.
 5. **Bestätigen:** **Importieren und freigeben** gibt das Widget sofort frei. Eine zweite Prüfung gibt es nicht, der Import ist diese Prüfung.
 
@@ -179,7 +184,11 @@ If the page says the widget changed since you opened it, reload and review the n
 
 ### Telling the developer
 
-A status change doesn't notify anyone, and **Deny** has no field for a reason. So after every decision, write from support@ivicos.eu. For a denial, say what has to change:
+This is automatic now. The developer gets an email when you approve, restore, deny, suspend or import a widget, and you get one when something enters the queue. Emails are on only for the test environment and production. The widget's creator is the contact, whoever clicked **Submit for review**. The email goes to the account address, or to a notification address if the creator set one, which nobody else can see. The approval on the test environment says the widget isn't live for customers yet; another email follows on import.
+
+**Deny** and **Suspend** require a reason (up to 1000 characters). The developer reads it word for word in the email, so write it to be clear without a follow-up. **Delete** has no reason. If its email fails, it only goes to the logs, with no warning.
+
+**Write by hand only when the yellow warning bar appears.** It appears after a decision or an import when the developer could not be emailed, or no developer is known. Then write from support@ivicos.eu, for a denial for example like this:
 
 > Subject: Your widget "NAME": changes needed
 >
@@ -195,12 +204,13 @@ A status change doesn't notify anyone, and **Deny** has no field for a reason. S
 
 Only approved widgets can be exported.
 
-1. **Export:** open the approved widget on the test environment and click **Export**. You get a JSON file.
+1. **Export:** open the approved widget on the test environment and click **Export**. You get a JSON file. It holds the developer's personal address and language in `developerContact`. Don't share it, and delete it after import.
 2. **Production's reviewer organisation:** sign into production and switch to the reviewer organisation.
 3. **Import:** in **External widgets**, click **Import widget** and choose the file.
 4. **Read the dialog:** it shows every field. Watch for these messages:
    - **Replaces the existing widget:** check the listed changes.
    - **Origin missing from the frame allowlist:** have a developer add the origin and redeploy the client. Otherwise the widget stays blank once the frame policy is enforced.
+   - **Who will be emailed:** the dialog says who is told the widget is live. If it says nobody will be emailed, write to the developer yourself.
    - **ID is reserved:** the import isn't possible, even if the existing widget was deleted. The widget needs a new ID, and its developer must change it in their page too.
 5. **Confirm:** **Import and approve** approves the widget immediately. There's no second review step; the import is that step.
 

@@ -725,9 +725,15 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    user“, „Preview room“) statt mit den Daten echter Nutzer:innen. Es muss also auch mit diesen Werten
    funktionieren und gut aussehen.
 
-   Die Prüfung erfolgt manuell, und eine Statusänderung löst keine Benachrichtigung aus — sieh also
-   unter **Deine Einreichungen** nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu)
-   nach, wenn du schon länger wartest.
+   Die Prüfung erfolgt manuell. Du bekommst zu jeder Entscheidung eine E-Mail, bei Ablehnen und Sperren
+   mit der Begründung der prüfenden Person im Wortlaut. Die E-Mails gehen an die Adresse deines Kontos.
+   Wenn du beim Einreichen oder unter **Bearbeiten** eine **Benachrichtigungsadresse** einträgst,
+   gehen sie stattdessen an diese; nur du siehst sie. Wer das Widget angelegt hat, bekommt die E-Mails,
+   egal wer auf **Zur Prüfung einreichen** klickt. Dieselbe Adresse gilt auch, wenn ivicos das Widget in
+   die Produktion bringt: Du bekommst dann eine weitere E-Mail. Die Freigabe in der Testumgebung sagt,
+   dass das Widget für Kund:innen noch nicht live ist; erst diese zweite E-Mail sagt, dass es live ist.
+   Du kannst die Adresse ändern, ohne dass das Widget zurück in den Test geht. Bleibt eine E-Mail aus, schau unter **Deine
+   Einreichungen** nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu) nach.
 
 5. **Produktion.** ivicos exportiert das freigegebene Widget aus der Testumgebung und importiert es in
    die Produktion. Du reichst es nicht ein zweites Mal ein.
@@ -1518,8 +1524,14 @@ widget to production. You never submit to production yourself.
    A reviewer tries your widget in a preview with placeholder data ("Preview user", "Preview room")
    instead of a real user's details, so it must still work and look right with those values.
 
-   Review is manual and nothing notifies you when the status changes, so check **Your submissions**,
-   or ask at [support@ivicos.eu](mailto:support@ivicos.eu) if you have been waiting.
+   Review is manual. You get an email for every decision; for a denial or suspension it holds the
+   reviewer's reason word for word. The emails go to your account address. If you enter a
+   **notification address** when you submit or under **Edit**, they go there instead, and only you can
+   see it. Whoever created the widget gets the emails, no matter who clicks **Submit for review**. The
+   same address is used when ivicos brings the widget to production, where you get another email: an
+   approval on the test environment says the widget isn't live for customers yet, and this is the one
+   that says it is. Changing the address doesn't put the widget back in testing. If an email doesn't
+   arrive, check **Your submissions**, or ask at [support@ivicos.eu](mailto:support@ivicos.eu).
 
 5. **Production.** ivicos exports the approved widget from the test environment and imports it into
    production. You don't submit it a second time.
