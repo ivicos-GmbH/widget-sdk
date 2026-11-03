@@ -727,7 +727,7 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
 
    Die Prüfung erfolgt manuell. Du bekommst zu jeder Entscheidung eine E-Mail, bei Ablehnen und Sperren
    mit der Begründung der prüfenden Person im Wortlaut. Die E-Mails gehen an die Adresse deines Kontos.
-   Wenn du beim Einreichen oder unter **Bearbeiten** eine **Benachrichtigungsadresse** einträgst,
+   Wenn du beim Einreichen oder unter **Bearbeiten** das Feld **E-Mail für Prüfungs-Updates (optional)** ausfüllst,
    gehen sie stattdessen an diese; nur du siehst sie. Wer das Widget angelegt hat, bekommt die E-Mails,
    egal wer auf **Zur Prüfung einreichen** klickt. Dieselbe Adresse gilt auch, wenn ivicos das Widget in
    die Produktion bringt: Du bekommst dann eine weitere E-Mail. Die Freigabe in der Testumgebung sagt,
@@ -1525,8 +1525,8 @@ widget to production. You never submit to production yourself.
    instead of a real user's details, so it must still work and look right with those values.
 
    Review is manual. You get an email for every decision; for a denial or suspension it holds the
-   reviewer's reason word for word. The emails go to your account address. If you enter a
-   **notification address** when you submit or under **Edit**, they go there instead, and only you can
+   reviewer's reason word for word. The emails go to your account address. If you fill in
+   **Email for review updates (optional)** when you submit or under **Edit**, they go there instead, and only you can
    see it. Whoever created the widget gets the emails, no matter who clicks **Submit for review**. The
    same address is used when ivicos brings the widget to production, where you get another email: an
    approval on the test environment says the widget isn't live for customers yet, and this is the one
