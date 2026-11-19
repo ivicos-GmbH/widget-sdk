@@ -681,19 +681,24 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    Organisation automatisch freigegeben, du kannst deines also sofort ausprobieren.
 
 2. **Einreichen.** Öffne in der Test-Organisation **CAMPUS Konfiguration → Integrationen →
-   Zusätzliche Widgets → Widget einreichen** und füll aus:
+   Zusätzliche Widgets → Deine Einreichungen → Widget einreichen** und füll aus:
 
    | Feld | Einschränkung |
    |---|---|
-   | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
    | Name | Freitext; wird als Name des Widgets in der Übersicht der Integrationen angezeigt |
-   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
+   | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
    | Widget-URL | deine HTTPS-Iframe-URL |
-   | Webseite | optional; HTTPS-Link auf eine Seite, die erklärt, was dein Widget tut — siehe unten |
-   | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
-   | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
+   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
+   | Icon-URL | erforderlich; öffentlich erreichbare HTTPS-URL zu deinem Icon |
+   | Beschreibung | Freitext, darf leer bleiben; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
-   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Webseite | optional; HTTPS-Link auf eine Seite, die erklärt, was dein Widget tut — siehe unten |
+   | E-Mail für Prüfungs-Updates | optional; die E-Mails zu jeder Prüfungsentscheidung gehen dann an diese Adresse statt an die deines Kontos — siehe Schritt 4 |
+   | Seiten, zu denen dieses Widget Nutzer weiterleiten darf (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Alle Subdomains deiner Domain | optional; eine Domain wie `example.com`; dein Widget darf dann jede Seite unter `https://*.example.com` öffnen |
+
+   Die optionalen Felder stehen zusammen in einem eigenen Abschnitt unter den Pflichtfeldern. Der
+   Abschnitt ist offen, wenn das Formular aufgeht, und du kannst ihn zuklappen.
 
    **Zur Webseite.** Bevor ein Manager dein Widget für seine gesamte Organisation aktiviert, will er
    wissen, was er da einschaltet. Genau dafür ist dieses Feld da: Gibst du eine Webseite an, wird der
@@ -711,6 +716,10 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    Test-Organisation aktiviert es in derselben Liste, und es wird für die Mitglieder dieser
    Organisation gerendert und nirgends sonst. Ändere es mit **Bearbeiten** so oft du willst; es
    bleibt im Test.
+
+   Unter **Deine Einreichungen** hat dein Widget im Test außerdem **Widget-Vorschau**, die es
+   öffnet, ohne es in einem Bereich einzuschalten, und **Löschen**, das es aus der Test-Organisation
+   und der Registry entfernt. Du kannst es danach mit derselben Widget-ID erneut einreichen.
 
 4. **Zur Prüfung einreichen.** Wenn es funktioniert, klick unter **Deine Einreichungen** auf **Zur
    Prüfung einreichen**. Es wechselt auf **Ausstehende Überprüfung** und wird nirgends gerendert, bis
@@ -1483,19 +1492,24 @@ widget to production. You never submit to production yourself.
    that organisation automatically, so you can try yours straight away.
 
 2. **Submit it.** In the testing organisation, open **CAMPUS settings → Integration → Additional
-   widgets → Submit a widget** and fill in:
+   widgets → Your submissions → Submit a widget** and fill in:
 
    | Field | Constraint |
    |---|---|
-   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
    | Name | free text; shown as the widget's name in the integrations overview |
-   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
+   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
    | Widget URL | your HTTPS iframe URL |
-   | Website | optional; https link to a page explaining what your widget does — see below |
-   | Icon URL | publicly reachable HTTPS URL to your icon |
-   | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
+   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
+   | Icon URL | required; publicly reachable HTTPS URL to your icon |
+   | Description | free text, can be left empty; explains what the widget does, and appears in the info callout beside its name in the integration settings |
    | Placement | Room, Personal dashboard, or both — at least one is required |
-   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | Website | optional; https link to a page explaining what your widget does — see below |
+   | Email for review updates | optional; the email about each review decision then goes to this address instead of your account's — see step 4 |
+   | Sites this widget may send people to (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | All subdomains of your domain | optional; a domain such as `example.com`; your widget may then open any page under `https://*.example.com` |
+
+   The optional fields sit together in their own section below the required ones. The section is
+   open when the form opens, and you can collapse it.
 
    **About the website.** Before a manager switches your widget on for their whole organisation, they
    want to know what they are switching on. That is what this field is for: give a website and your
@@ -1512,6 +1526,10 @@ widget to production. You never submit to production yourself.
 3. **Test it.** Your widget now has the status **Testing (this org only)**. A manager of the testing
    organisation turns it on in the same list, and it renders for that organisation's members and
    nowhere else. Change it as often as you like with **Edit**; it stays in testing.
+
+   Under **Your submissions**, a widget in testing also has **Preview widget**, which opens it
+   without turning it on in an area, and **Delete**, which removes it from the testing organisation
+   and the registry. You can submit it again later with the same widget ID.
 
 4. **Submit it for review.** When it works, click **Submit for review** under **Your submissions**.
    It moves to **Pending review** and doesn't render anywhere until a reviewer decides:
