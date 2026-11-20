@@ -766,7 +766,7 @@ Prüfung unter **In Prüfung**, freigegebene und gesperrte unter **Entschieden**
 |---|---|
 | Im Test (nur diese Organisation) | nur innerhalb der Test-Organisation nutzbar |
 | In Prüfung | wartet auf eine prüfende Person; wird nirgends gerendert |
-| Freigegeben | live; jede Organisation kann es aktivieren |
+| Freigegeben | in der Testumgebung freigegeben, dort kann jede Organisation es aktivieren; live für Kund:innen, sobald ivicos es in die Produktion importiert |
 | Gesperrt | von einer prüfenden Person zurückgezogen; wird nirgends gerendert, bis es wiederhergestellt ist |
 
 Ein gesperrtes Widget wird überall dort nicht mehr gerendert, wo es aktiviert war (siehe
@@ -774,7 +774,7 @@ Ein gesperrtes Widget wird überall dort nicht mehr gerendert, wo es aktiviert w
 
 **`allowedOrigins` wird von einem Menschen geprüft.** Das Feld ist keine Formalie: Mit der Freigabe
 deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
-Jede Änderung nach der Freigabe geht erneut durch die Prüfung. Nimm also lieber gleich alle Origins
+Jede Änderung an den Feldern des Widgets nach der Freigabe geht erneut durch die Prüfung. Nimm also lieber gleich alle Origins
 auf, die du brauchst, statt sie später einzeln nachzureichen.
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
@@ -1578,15 +1578,15 @@ review**, and approved or suspended ones under **Decided**.
 |---|---|
 | Testing (this org only) | usable only inside the testing organisation |
 | In review | waiting for a reviewer; renders nowhere |
-| Approved | live; every organisation can turn it on |
+| Approved | approved on the test environment, where every organisation can turn it on; live for customers once ivicos imports it to production |
 | Suspended | withdrawn by a reviewer; renders nowhere until restored |
 
 A suspended widget stops rendering everywhere it was enabled (see
 [Status — please read this first](#status--please-read-this-first)).
 
 **`allowedOrigins` is reviewed by a human.** The field is not a formality: approving your widget is
-also approving that it may send users to exactly those origins. Every change after approval goes
-through review again, so list every origin you need up front rather than adding them one at a time
+also approving that it may send users to exactly those origins. Every change to the widget's fields
+after approval goes through review again, so list every origin you need up front rather than adding them one at a time
 later.
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
