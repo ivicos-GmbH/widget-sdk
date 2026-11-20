@@ -681,7 +681,8 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    Organisation automatisch freigegeben, du kannst deines also sofort ausprobieren.
 
 2. **Einreichen.** Öffne in der Test-Organisation **CAMPUS Konfiguration → Integrationen →
-   Zusätzliche Widgets → Deine Einreichungen → Widget einreichen** und füll aus:
+   Zusätzliche Widgets**, klick oben auf der Leiste **Deine Einreichungen** auf **Widget einreichen**
+   und füll aus:
 
    | Feld | Einschränkung |
    |---|---|
@@ -717,13 +718,17 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    Organisation gerendert und nirgends sonst. Ändere es mit **Bearbeiten** so oft du willst; es
    bleibt im Test.
 
-   Unter **Deine Einreichungen** hat dein Widget im Test außerdem **Widget-Vorschau**, die es
-   öffnet, ohne es in einem Bereich einzuschalten, und **Löschen**, das es aus der Test-Organisation
-   und der Registry entfernt. Du kannst es danach mit derselben Widget-ID erneut einreichen.
+   **Deine Einreichungen** zeigt nur die Widgets, die du selbst eingereicht hast. Mit **Alle …
+   ansehen** auf der Leiste öffnest du sie in einem Seitenbereich. Dort hat dein Widget im Test
+   **Widget-Vorschau**, die es öffnet, ohne es in einem Bereich einzuschalten, und zwei Symbole:
+   **Bearbeiten** (Stift) und **Löschen** (Papierkorb), das es aus der Test-Organisation und der
+   Registry entfernt. Du kannst es danach mit derselben Widget-ID erneut einreichen. Zur Prüfung
+   einreichen, bearbeiten und löschen kannst du als die Person, die das Widget angelegt hat; der
+   Owner der Organisation kann es auch bearbeiten und löschen, andere Manager nicht.
 
-4. **Zur Prüfung einreichen.** Wenn es funktioniert, klick unter **Deine Einreichungen** auf **Zur
-   Prüfung einreichen**. Es wechselt auf **Ausstehende Überprüfung** und wird nirgends gerendert, bis
-   eine prüfende Person entscheidet:
+4. **Zur Prüfung einreichen.** Wenn es funktioniert, klick im Seitenbereich **Deine Einreichungen**
+   auf seiner Karte auf **Zur Prüfung einreichen**. Es wechselt auf **In Prüfung** und wird nirgends
+   gerendert, bis eine prüfende Person entscheidet:
 
    | Entscheidung | Ergebnis |
    |---|---|
@@ -737,8 +742,8 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    Die Prüfung erfolgt manuell. Du bekommst zu jeder Entscheidung eine E-Mail, bei Ablehnen und Sperren
    mit der Begründung der prüfenden Person im Wortlaut. Die E-Mails gehen an die Adresse deines Kontos.
    Wenn du beim Einreichen oder unter **Bearbeiten** das Feld **E-Mail für Prüfungs-Updates (optional)** ausfüllst,
-   gehen sie stattdessen an diese; nur du siehst sie. Wer das Widget angelegt hat, bekommt die E-Mails,
-   egal wer auf **Zur Prüfung einreichen** klickt. Dieselbe Adresse gilt auch, wenn ivicos das Widget in
+   gehen sie stattdessen an diese; nur du siehst sie. Die E-Mails gehen immer an die Person, die das
+   Widget angelegt hat. Dieselbe Adresse gilt auch, wenn ivicos das Widget in
    die Produktion bringt: Du bekommst dann eine weitere E-Mail. Die Freigabe in der Testumgebung sagt,
    dass das Widget für Kund:innen noch nicht live ist; erst diese zweite E-Mail sagt, dass es live ist.
    Du kannst die Adresse ändern, ohne dass das Widget zurück in den Test geht. Bleibt eine E-Mail aus, schau unter **Deine
@@ -753,12 +758,14 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    erneut zur Prüfung ein; nach der Freigabe importiert ivicos die neue Version in die Produktion, wo
    bis dahin die alte läuft. Die Widget-ID lässt sich nicht ändern: Eine andere ID ist ein anderes Widget.
 
-Die Status, die du unter **Deine Einreichungen** und in der Liste der zusätzlichen Widgets siehst:
+Die Status, die du unter **Deine Einreichungen** und in der Liste der zusätzlichen Widgets siehst. Der
+Seitenbereich gruppiert sie: ein Widget im Test unter **Braucht deine Aufmerksamkeit**, eines in
+Prüfung unter **In Prüfung**, freigegebene und gesperrte unter **Entschieden**.
 
 | Status | Bedeutung |
 |---|---|
 | Im Test (nur diese Organisation) | nur innerhalb der Test-Organisation nutzbar |
-| Ausstehende Überprüfung | wartet auf eine prüfende Person; wird nirgends gerendert |
+| In Prüfung | wartet auf eine prüfende Person; wird nirgends gerendert |
 | Freigegeben | live; jede Organisation kann es aktivieren |
 | Gesperrt | von einer prüfenden Person zurückgezogen; wird nirgends gerendert, bis es wiederhergestellt ist |
 
@@ -1492,7 +1499,7 @@ widget to production. You never submit to production yourself.
    that organisation automatically, so you can try yours straight away.
 
 2. **Submit it.** In the testing organisation, open **CAMPUS settings → Integration → Additional
-   widgets → Your submissions → Submit a widget** and fill in:
+   widgets**, click **Submit a widget** on the **Your submissions** strip at the top, and fill in:
 
    | Field | Constraint |
    |---|---|
@@ -1527,12 +1534,15 @@ widget to production. You never submit to production yourself.
    organisation turns it on in the same list, and it renders for that organisation's members and
    nowhere else. Change it as often as you like with **Edit**; it stays in testing.
 
-   Under **Your submissions**, a widget in testing also has **Preview widget**, which opens it
-   without turning it on in an area, and **Delete**, which removes it from the testing organisation
-   and the registry. You can submit it again later with the same widget ID.
+   **Your submissions** lists only the widgets you submitted yourself. Click **View all** on the
+   strip to open them in a side panel. There, a widget in testing has **Preview widget**, which opens
+   it without turning it on in an area, and two icons: **Edit** (pencil) and **Delete** (bin), which
+   removes it from the testing organisation and the registry. You can submit it again later with the
+   same widget ID. Submitting for review, editing and deleting are for you as the widget's creator;
+   the organisation's owner can also edit and delete it, other managers can't.
 
-4. **Submit it for review.** When it works, click **Submit for review** under **Your submissions**.
-   It moves to **Pending review** and doesn't render anywhere until a reviewer decides:
+4. **Submit it for review.** When it works, click **Submit for review** on its card in the **Your
+   submissions** panel. It moves to **In review** and doesn't render anywhere until a reviewer decides:
 
    | Decision | Result |
    |---|---|
@@ -1545,7 +1555,7 @@ widget to production. You never submit to production yourself.
    Review is manual. You get an email for every decision; for a denial or suspension it holds the
    reviewer's reason word for word. The emails go to your account address. If you fill in
    **Email for review updates (optional)** when you submit or under **Edit**, they go there instead, and only you can
-   see it. Whoever created the widget gets the emails, no matter who clicks **Submit for review**. The
+   see it. The emails always go to whoever created the widget. The
    same address is used when ivicos brings the widget to production, where you get another email: an
    approval on the test environment says the widget isn't live for customers yet, and this is the one
    that says it is. Changing the address doesn't put the widget back in testing. If an email doesn't
@@ -1560,12 +1570,14 @@ widget to production. You never submit to production yourself.
    ivicos imports the new version into production, which keeps the old one until then. The Widget
    ID can't be changed: a different ID is a different widget.
 
-The statuses you can see under **Your submissions** and in the list of additional widgets:
+The statuses you can see under **Your submissions** and in the list of additional widgets. The
+panel groups them: a widget in testing under **Needs your attention**, one in review under **In
+review**, and approved or suspended ones under **Decided**.
 
 | Status | What it means |
 |---|---|
 | Testing (this org only) | usable only inside the testing organisation |
-| Pending review | waiting for a reviewer; renders nowhere |
+| In review | waiting for a reviewer; renders nowhere |
 | Approved | live; every organisation can turn it on |
 | Suspended | withdrawn by a reviewer; renders nowhere until restored |
 
