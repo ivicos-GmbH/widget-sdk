@@ -33,8 +33,9 @@ Dies ist eine frühe Phase des Widget-Systems, mit echten Einschränkungen. Konk
   Nichts davon erfordert eine Berechtigung, einen Scope oder eine Zustimmungsabfrage: Jedes
   freigegebene Widget erhält exakt dieselben Felder. Wie du sie ausliest, zeigt
   [Den Kontext nutzen](#den-kontext-nutzen).
-- Es gibt **kein Self-Service-Publishing**. Jedes Widget durchläuft eine manuelle Prüfung, bevor es für
-  irgendjemanden nutzbar ist (siehe [Dein Widget einreichen](#dein-widget-einreichen) weiter unten).
+- Es gibt **kein Self-Service-Publishing**. Du testest dein Widget in einer Test-Organisation, die
+  ivicos betreibt; jedes Widget durchläuft eine manuelle Prüfung, bevor es jemand außerhalb davon
+  nutzen kann (siehe [Dein Widget einreichen](#dein-widget-einreichen) weiter unten).
 - **Eine Freigabe ist nicht endgültig.** Ein freigegebenes Widget kann nachträglich gesperrt werden;
   es wird dann überall dort nicht mehr gerendert, wo es aktiviert war. Behandle das Verschwinden als
   normalen Zustand, nicht als Absturz. Auf diese Weise können wir dem Nutzer ein störungsfreies Erlebnis bieten, auch, wenn mal an einer Stelle etwas nicht funktioniert.
@@ -455,6 +456,14 @@ Einreichung dürfen geöffnet werden — siehe [Dein Widget einreichen](#dein-wi
 eigene Origin deines Widgets ist immer erlaubt und muss nicht deklariert werden: Sie ist ohnehin
 schon in deinem Frame geladen. Alles andere ergibt `denied`.
 
+Musst du auf viele Subdomains deiner eigenen Domain verlinken (etwa eine Adresse pro Kunde), trage
+deine Domain im Einreichungsformular im Feld „Alle Subdomains deiner Domain" ein; sie wird als
+Platzhalter `https://*.example.com` in `allowedOrigins` gespeichert. Er deckt jede Subdomain von `example.com` in
+jeder Tiefe ab (`kunde-a.example.com`, `a.b.example.com`), aber nicht `example.com` selbst — die
+trägst du bei Bedarf als eigene Zeile ein. Pro Widget ist ein Platzhalter erlaubt, neben beliebigen
+exakten Origins. Endungen, unter denen jeder registrieren oder hosten kann (`*.de`, `*.co.uk`,
+`*.vercel.app`, `*.github.io`), werden abgelehnt.
+
 **Rufe `openUrl()` aus einem Klick-Handler auf.** Der Host öffnet nur, solange eine echte
 Nutzerinteraktion wirkt, und die ist nach wenigen Sekunden vorbei. Aus einem `setTimeout`, einem
 `useEffect` oder dem Callback eines Daten-Ladevorgangs bekommst du zuverlässig `denied`. Das ist
@@ -510,6 +519,12 @@ bereits groß und bietet nichts zum Umschalten. `requestDisplayMode()` gibt es, 
 wenn die Nutzerin etwas in deinem Widget angeklickt hat — der Host entscheidet weiterhin, darf
 ablehnen und darf dich jederzeit wieder verkleinern. Genau deshalb sollte nur
 `onDisplayModeChange` dein Layout ändern.
+
+**Ruf es aus einem Klick-Handler auf.** Der Host nimmt eine Anfrage nach einem Anzeigemodus nur im
+Moment direkt nach einer echten Nutzeraktion an, dieselbe Regel wie bei
+[`openUrl()`](#links-aus-deinem-widget-öffnen). Eine Anfrage aus einem Timer, einem Load-Handler oder
+einem Promise, das lange nach dem Klick auflöst, wird ignoriert, und `onDisplayModeChange` feuert
+mit dem unveränderten Modus.
 
 ### Hosting-Anforderungen
 
@@ -665,21 +680,34 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
 
 ### Dein Widget einreichen
 
-1. Jemand mit der Rolle Manager oder Owner in einer ivCampus-Organisation (die **sponsernde
-   Organisation** — die Verantwortlichkeit für dein Widget führt auf sie zurück) öffnet
-   **Campus-Einstellungen → Externe Widgets → Widget einreichen** und füllt aus:
+Du reichst ein Widget **einmal** ein, in der Testumgebung von ivCampus, in einer **Test-Organisation**,
+die ivicos betreibt. Dort testest du es, dort gibt eine prüfende Person von ivicos es frei, und ivicos
+bringt das freigegebene Widget anschließend in die Produktion. In die Produktion reichst du nie selbst ein.
+
+1. **Zugang zur Test-Organisation.** Schreib an [support@ivicos.eu](mailto:support@ivicos.eu);
+   ivicos macht dich zum Manager der Test-Organisation. Dort eingereichte Widgets sind für diese
+   Organisation automatisch freigegeben, du kannst deines also sofort ausprobieren.
+
+2. **Einreichen.** Öffne in der Test-Organisation **CAMPUS Konfiguration → Integrationen →
+   Zusätzliche Widgets**, klick oben auf der Leiste **Deine Einreichungen** auf **Widget einreichen**
+   und füll aus:
 
    | Feld | Einschränkung |
    |---|---|
-   | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
    | Name | Freitext; wird als Name des Widgets in der Übersicht der Integrationen angezeigt |
-   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
+   | Widget-ID | nur Kleinbuchstaben/Ziffern/Bindestriche, eindeutig über die gesamte Registry, und **nach der Einreichung unveränderlich** |
    | Widget-URL | deine HTTPS-Iframe-URL |
-   | Webseite | optional; HTTPS-Link auf eine Seite, die erklärt, was dein Widget tut — siehe unten |
-   | Icon-URL | öffentlich erreichbare HTTPS-URL zu deinem Icon |
-   | Beschreibung | Freitext; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
+   | Version | muss wie `X.Y.Z` aussehen (z. B. `1.0.0`) |
+   | Icon-URL | erforderlich; öffentlich erreichbare HTTPS-URL zu deinem Icon |
+   | Beschreibung | Freitext, darf leer bleiben; erklärt, was das Widget tut, und erscheint im Info-Callout neben dem Namen in den Integrations-Einstellungen |
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
-   | Erlaubte Origins (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Webseite | optional; HTTPS-Link auf eine Seite, die erklärt, was dein Widget tut — siehe unten |
+   | E-Mail für Prüfungs-Updates | optional; die E-Mails zu jeder Prüfungsentscheidung gehen dann an diese Adresse statt an die deines Kontos — siehe Schritt 4 |
+   | Seiten, zu denen dieses Widget Nutzer weiterleiten darf (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, hier keine Wildcards: dafür ist das Feld darunter), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Alle Subdomains deiner Domain | optional; eine Domain wie `example.com`; dein Widget darf dann jede Seite unter `https://*.example.com` öffnen. Gespeichert als `https://*.example.com` in `allowedOrigins`, zählt als einer der 10 Einträge |
+
+   Die optionalen Felder stehen zusammen in einem eigenen Abschnitt unter den Pflichtfeldern. Der
+   Abschnitt ist offen, wenn das Formular aufgeht, und du kannst ihn zuklappen.
 
    **Zur Webseite.** Bevor ein Manager dein Widget für seine gesamte Organisation aktiviert, will er
    wissen, was er da einschaltet. Genau dafür ist dieses Feld da: Gibst du eine Webseite an, wird der
@@ -693,30 +721,71 @@ einer anderen Origin lädt, sich als der Host ausgeben. Genau das übernimmt das
    einen Ladezustand oder eine leere Karte. Eine kurze Seite, die in zwei Sätzen erklärt, was dein
    Widget tut, ist mehr wert als jede Demo, die nicht läuft.
 
-2. Die Einreichung ist sofort für die sponsernde Organisation sichtbar und für niemanden sonst. Sie
-   kann von niemandem aktiviert oder genutzt werden, bevor sie geprüft wurde.
+3. **Testen.** Dein Widget hat jetzt den Status **Im Test (nur diese Organisation)**. Ein Manager der
+   Test-Organisation aktiviert es in derselben Liste, und es wird für die Mitglieder dieser
+   Organisation gerendert und nirgends sonst. Ändere es mit **Bearbeiten** so oft du willst; es
+   bleibt im Test.
 
-3. Verfolge sie auf demselben Screen unter **Deine Einreichungen**, wo der aktuelle Status steht:
+   **Deine Einreichungen** zeigt nur die Widgets, die du selbst eingereicht hast. Mit **Alle …
+   ansehen** auf der Leiste öffnest du sie in einem Seitenbereich. Dort hat dein Widget im Test
+   **Widget-Vorschau**, die es öffnet, ohne es in einem Bereich einzuschalten, und zwei Symbole:
+   **Bearbeiten** (Stift) und **Löschen** (Papierkorb), das es aus der Test-Organisation und der
+   Registry entfernt. Du kannst es danach mit derselben Widget-ID erneut einreichen. Zur Prüfung
+   einreichen und löschen kannst nur du als die Person, die das Widget angelegt hat. Der Owner der
+   Organisation kann es auch bearbeiten, mit dem Stift in der Liste der zusätzlichen Widgets;
+   andere Manager nicht.
 
-   | Status | Bedeutung |
+4. **Zur Prüfung einreichen.** Wenn es funktioniert, klick im Seitenbereich **Deine Einreichungen**
+   auf seiner Karte auf **Zur Prüfung einreichen**. Es wechselt auf **In Prüfung** und wird nirgends
+   gerendert, bis eine prüfende Person entscheidet:
+
+   | Entscheidung | Ergebnis |
    |---|---|
-   | Ausstehende Überprüfung | eingereicht, wartet auf ivCampus |
-   | Freigegeben | live — die sponsernde Organisation kann es in den registrierten Placements aktivieren |
-   | Gesperrt | zuvor freigegeben, inzwischen zurückgezogen; es wird für niemanden mehr gerendert |
+   | Freigeben | **Freigegeben**: jede Organisation kann es aktivieren, in den registrierten Placements |
+   | Ablehnen | zurück auf **Im Test (nur diese Organisation)**; korrigiere es und reiche es erneut zur Prüfung ein |
 
-   Die Prüfung erfolgt manuell, und eine Statusänderung löst keine Benachrichtigung aus — sieh also
-   auf diesem Screen nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu) nach, wenn du
-   schon länger wartest.
+   Eine prüfende Person probiert dein Widget in einer Vorschau mit Platzhalterdaten aus („Preview
+   user“, „Preview room“) statt mit den Daten echter Nutzer:innen. Es muss also auch mit diesen Werten
+   funktionieren und gut aussehen.
 
-4. Die sponsernde Organisation kann ihre eigene Einreichung nachträglich ändern (Name, Version, URL,
-   Icon, Beschreibung, Placements) oder ganz zurückziehen. Die Ausnahme ist die Widget-ID: Sie liegt
-   fest, und eine andere ID ist ein anderes Widget.
+   Die Prüfung erfolgt manuell. Du bekommst zu jeder Entscheidung eine E-Mail, bei Ablehnen und Sperren
+   mit der Begründung der prüfenden Person im Wortlaut. Die E-Mails gehen an die Adresse deines Kontos.
+   Wenn du beim Einreichen oder unter **Bearbeiten** das Feld **E-Mail für Prüfungs-Updates (optional)** ausfüllst,
+   gehen sie stattdessen an diese; nur du siehst sie. Die E-Mails gehen immer an die Person, die das
+   Widget angelegt hat. Dieselbe Adresse gilt auch, wenn ivicos das Widget in
+   die Produktion bringt: Du bekommst dann eine weitere E-Mail. Die Freigabe in der Testumgebung sagt,
+   dass das Widget für Kund:innen noch nicht live ist; erst diese zweite E-Mail sagt, dass es live ist.
+   Du kannst die Adresse ändern, ohne dass das Widget zurück in den Test geht. Bleibt eine E-Mail aus, schau unter **Deine
+   Einreichungen** nach, oder frag bei [support@ivicos.eu](mailto:support@ivicos.eu) nach.
+
+5. **Produktion.** ivicos exportiert das freigegebene Widget aus der Testumgebung und importiert es in
+   die Produktion. Du reichst es nicht ein zweites Mal ein.
+
+6. **Ein freigegebenes Widget ändern.** Bearbeite es in der Test-Organisation. Beim Speichern geht es
+   zurück auf **Im Test (nur diese Organisation)** und wird für alle anderen Organisationen erst nach
+   einer erneuten Freigabe wieder gerendert: Plane Änderungen an einem Live-Widget also ein. Reiche es
+   erneut zur Prüfung ein; nach der Freigabe importiert ivicos die neue Version in die Produktion, wo
+   bis dahin die alte läuft. Die Widget-ID lässt sich nicht ändern: Eine andere ID ist ein anderes Widget.
+
+Die Status, die du unter **Deine Einreichungen** und in der Liste der zusätzlichen Widgets siehst. Der
+Seitenbereich gruppiert sie: ein Widget im Test unter **Braucht deine Aufmerksamkeit**, eines in
+Prüfung unter **In Prüfung**, freigegebene und gesperrte unter **Entschieden**.
+
+| Status | Bedeutung |
+|---|---|
+| Im Test (nur diese Organisation) | nur innerhalb der Test-Organisation nutzbar |
+| In Prüfung | wartet auf eine prüfende Person; wird nirgends gerendert |
+| Freigegeben | in der Testumgebung freigegeben, dort kann jede Organisation es aktivieren; live für Kund:innen, sobald ivicos es in die Produktion importiert |
+| Gesperrt | von einer prüfenden Person zurückgezogen; wird nirgends gerendert, bis es wiederhergestellt ist |
+
+Ein gesperrtes Widget wird überall dort nicht mehr gerendert, wo es aktiviert war (siehe
+[Status — Bitte dies zuerst lesen](#status--bitte-dies-zuerst-lesen)).
 
 **`allowedOrigins` wird von einem Menschen geprüft.** Das Feld ist keine Formalie: Mit der Freigabe
 deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
-Deshalb gilt: **Änderst du `allowedOrigins` nach der Freigabe, geht das Widget zurück auf
-„Ausstehende Überprüfung"** und rendert bis zur erneuten Freigabe nicht mehr. Nimm also lieber gleich
-alle Origins auf, die du brauchst, statt sie später einzeln nachzureichen.
+Jede Änderung an den Feldern des Widgets nach der Freigabe geht erneut durch die Prüfung. Nimm also lieber gleich alle Origins
+auf, die du brauchst, statt sie später einzeln nachzureichen. Ein Platzhalter wird besonders genau
+geprüft: Er muss auf einer Domain stehen, die dir gehört.
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
@@ -736,7 +805,8 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
 
 1. Baue und hoste dein Widget dort, wo es letztendlich deployed werden soll (oder unter jeder beliebigen
    Wegwerf-HTTPS-URL — sie muss noch nicht der finale Ort sein).
-2. Registriere es wie oben beschrieben, mit einer Test-/persönlichen ivCampus-Organisation, falls vorhanden.
+2. Reiche es in der Test-Organisation ein, wie unter [Dein Widget einreichen](#dein-widget-einreichen)
+   beschrieben. Dort wird es sofort gerendert.
 3. Beobachte die eigene `onContextChange`-/Konsolenausgabe deines Widgets sowie die Network- und
    Console-Tabs der Browser-Devtools auf Handshake- oder Origin-Fehler.
 
@@ -753,8 +823,9 @@ Teste dein Widget gegen einen echten Host, bevor du es einreichst, statt blind z
 - **Externe Links öffnet der Host, nicht dein Widget.** Das ist Absicht: Dein Widget erhält nie das
   Recht, Fenster zu öffnen — es darf nur darum bitten ([`openUrl()`](#links-aus-deinem-widget-öffnen)),
   und der Host prüft die Origin gegen dein `allowedOrigins` und öffnet nur während einer echten
-  Nutzerinteraktion. Geöffnet wird immer mit `noopener,noreferrer`, die Zielseite bekommt also
-  keinerlei Handle zurück auf den Campus.
+  Nutzerinteraktion. Der Host löscht `window.opener`, bevor die Seite lädt, die Zielseite bekommt
+  also keinerlei Handle zurück auf den Campus. Sie kann die Campus-Origin als Referrer sehen, aber
+  nicht den Pfad.
 - Erhält niemals die echten ivCampus-Zugangsdaten der Endnutzerin/des Endnutzers, in keiner Form.
 - Alle Nachrichten werden gegen `event.source === window.parent` und, nach der ersten akzeptierten
   Nachricht, gegen eine fixierte erwartete Origin validiert — siehe
@@ -809,8 +880,9 @@ This is an early phase of the widget system, with real constraints. Concretely:
   widget knows about ivCampus is in the context. Widgets also cannot write anything back to ivCampus.
   None of it requires a permission, a scope or a consent prompt: every approved widget receives
   exactly the same fields. See [Using the context](#using-the-context) for how to read them.
-- There is **no self-serve publishing**. Every widget goes through manual review before it's
-  usable by anyone (see [Submitting your widget](#submitting-your-widget) below).
+- There is **no self-serve publishing**. You test your widget in a testing organisation run by
+  ivicos; every widget goes through manual review before anyone outside it can use it (see
+  [Submitting your widget](#submitting-your-widget) below).
 - **Approval is not permanent.** An approved widget can be suspended afterwards, which stops it
   rendering everywhere it was enabled. Treat disappearing as a normal state, not a crash.
 - The SDK is published to **GitHub Packages**, not the public npm registry — see
@@ -1221,6 +1293,14 @@ can be opened — see [Submitting your widget](#submitting-your-widget). Your wi
 always permitted and does not need declaring: it is already loaded in your frame, so opening it
 exposes nothing new. Anything else answers `denied`.
 
+If you need to link to many subdomains of your own domain (one address per customer, say), enter
+your domain in the submission form's "All subdomains of your domain" field; it is stored as the
+wildcard `https://*.example.com` in `allowedOrigins`. It covers every subdomain of `example.com` at any depth
+(`customer-a.example.com`, `a.b.example.com`) but not `example.com` itself — list that on its own
+line if you need it. One wildcard is allowed per widget, next to any number of exact origins.
+Endings anyone can register or host under (`*.de`, `*.co.uk`, `*.vercel.app`, `*.github.io`) are
+refused.
+
 **Call `openUrl()` from a click handler.** The host only opens while a real user gesture is in
 effect, and that lapses after a few seconds. From a `setTimeout`, a `useEffect` or a data-load
 callback you will reliably get `denied`. That is deliberate: it makes popup spam physically
@@ -1273,6 +1353,11 @@ already large and offers nothing to switch to. `requestDisplayMode()` exists for
 response to something the user clicked inside your widget — the host still decides, may
 refuse, and may collapse you again at any time, which is why only `onDisplayModeChange`
 should change your layout.
+
+**Call it from a click handler.** The host accepts a display-mode request only in the moment right
+after a real user gesture, the same rule as [`openUrl()`](#opening-links-out-of-your-widget). A
+request from a timer, a load handler or a resolved promise long after the click is ignored, and
+`onDisplayModeChange` fires with the unchanged mode.
 
 ### Hosting requirements
 
@@ -1423,21 +1508,33 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
 
 ### Submitting your widget
 
-1. Someone with a Manager or Owner role on an ivCampus org (the **sponsoring org** — your
-   widget's accountability traces back to them) opens **Campus Settings → External widgets →
-   Submit a widget** and fills in:
+You submit a widget **once**, on ivCampus's test environment, in a **testing organisation** run by
+ivicos. You test it there, an ivicos reviewer approves it there, and ivicos then brings the approved
+widget to production. You never submit to production yourself.
+
+1. **Get access to the testing organisation.** Write to [support@ivicos.eu](mailto:support@ivicos.eu);
+   ivicos makes you a manager of the testing organisation. Widgets submitted there are approved for
+   that organisation automatically, so you can try yours straight away.
+
+2. **Submit it.** In the testing organisation, open **CAMPUS settings → Integration → Additional
+   widgets**, click **Submit a widget** on the **Your submissions** strip at the top, and fill in:
 
    | Field | Constraint |
    |---|---|
-   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
    | Name | free text; shown as the widget's name in the integrations overview |
-   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
+   | Widget ID | lowercase letters/numbers/hyphens only, unique across the whole registry, and **fixed once submitted** |
    | Widget URL | your HTTPS iframe URL |
-   | Website | optional; https link to a page explaining what your widget does — see below |
-   | Icon URL | publicly reachable HTTPS URL to your icon |
-   | Description | free text; explains what the widget does, and appears in the info callout beside its name in the integration settings |
+   | Version | must look like `X.Y.Z` (e.g. `1.0.0`) |
+   | Icon URL | required; publicly reachable HTTPS URL to your icon |
+   | Description | free text, can be left empty; explains what the widget does, and appears in the info callout beside its name in the integration settings |
    | Placement | Room, Personal dashboard, or both — at least one is required |
-   | Allowed origins (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | Website | optional; https link to a page explaining what your widget does — see below |
+   | Email for review updates | optional; the email about each review decision then goes to this address instead of your account's — see step 4 |
+   | Sites this widget may send people to (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards here: use the field below) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | All subdomains of your domain | optional; a domain such as `example.com`; your widget may then open any page under `https://*.example.com`. Stored as `https://*.example.com` in `allowedOrigins`, counts as one of the 10 entries |
+
+   The optional fields sit together in their own section below the required ones. The section is
+   open when the form opens, and you can collapse it.
 
    **About the website.** Before a manager switches your widget on for their whole organisation, they
    want to know what they are switching on. That is what this field is for: give a website and your
@@ -1451,29 +1548,65 @@ origin could impersonate the host. This is exactly what the SDK does for you aut
    short page explaining in two sentences what your widget does is worth more than a demo that doesn't
    run.
 
-2. The submission is immediately visible to the sponsoring org and to no one else. It can't be
-   enabled or used by anyone until it has been reviewed.
+3. **Test it.** Your widget now has the status **Testing (this org only)**. A manager of the testing
+   organisation turns it on in the same list, and it renders for that organisation's members and
+   nowhere else. Change it as often as you like with **Edit**; it stays in testing.
 
-3. Track it under **Your submissions** on that same screen, which shows its current status:
+   **Your submissions** lists only the widgets you submitted yourself. Click **View all** on the
+   strip to open them in a side panel. There, a widget in testing has **Preview widget**, which opens
+   it without turning it on in an area, and two icons: **Edit** (pencil) and **Delete** (bin), which
+   removes it from the testing organisation and the registry. You can submit it again later with the
+   same widget ID. Submitting for review and deleting are for you as the widget's creator. The
+   organisation's owner can also edit it, with the pencil in the list of additional widgets; other
+   managers can't.
 
-   | Status | What it means |
+4. **Submit it for review.** When it works, click **Submit for review** on its card in the **Your
+   submissions** panel. It moves to **In review** and doesn't render anywhere until a reviewer decides:
+
+   | Decision | Result |
    |---|---|
-   | Pending review | submitted, waiting on ivCampus |
-   | Approved | live — the sponsoring org can enable it in the placements you registered for |
-   | Suspended | previously approved, since withdrawn; it stops rendering for everyone |
+   | Approve | **Approved**: every organisation can turn it on, in the placements you registered for |
+   | Deny | back to **Testing (this org only)**; fix it and submit it for review again |
 
-   Review is manual and nothing notifies you when the status changes, so check this screen — or ask
-   at [support@ivicos.eu](mailto:support@ivicos.eu) if you have been waiting.
+   A reviewer tries your widget in a preview with placeholder data ("Preview user", "Preview room")
+   instead of a real user's details, so it must still work and look right with those values.
 
-4. The sponsoring org can update its own submission afterwards (name, version, URL, icon,
-   description, placements) or withdraw it entirely. The Widget ID is the exception: it is fixed,
-   and a different ID is a different widget.
+   Review is manual. You get an email for every decision; for a denial or suspension it holds the
+   reviewer's reason word for word. The emails go to your account address. If you fill in
+   **Email for review updates (optional)** when you submit or under **Edit**, they go there instead, and only you can
+   see it. The emails always go to whoever created the widget. The
+   same address is used when ivicos brings the widget to production, where you get another email: an
+   approval on the test environment says the widget isn't live for customers yet, and this is the one
+   that says it is. Changing the address doesn't put the widget back in testing. If an email doesn't
+   arrive, check **Your submissions**, or ask at [support@ivicos.eu](mailto:support@ivicos.eu).
+
+5. **Production.** ivicos exports the approved widget from the test environment and imports it into
+   production. You don't submit it a second time.
+
+6. **Changing an approved widget.** Edit it in the testing organisation. Saving puts it back to
+   **Testing (this org only)**, so it stops rendering for every other organisation until it is
+   approved again: plan changes to a live widget. Submit it for review again; after the approval
+   ivicos imports the new version into production, which keeps the old one until then. The Widget
+   ID can't be changed: a different ID is a different widget.
+
+The statuses you can see under **Your submissions** and in the list of additional widgets. The
+panel groups them: a widget in testing under **Needs your attention**, one in review under **In
+review**, and approved or suspended ones under **Decided**.
+
+| Status | What it means |
+|---|---|
+| Testing (this org only) | usable only inside the testing organisation |
+| In review | waiting for a reviewer; renders nowhere |
+| Approved | approved on the test environment, where every organisation can turn it on; live for customers once ivicos imports it to production |
+| Suspended | withdrawn by a reviewer; renders nowhere until restored |
+
+A suspended widget stops rendering everywhere it was enabled (see
+[Status — please read this first](#status--please-read-this-first)).
 
 **`allowedOrigins` is reviewed by a human.** The field is not a formality: approving your widget is
-also approving that it may send users to exactly those origins. Which is why **changing
-`allowedOrigins` after approval sends the widget back to Pending review** and it stops rendering
-until it is approved again. So list every origin you need up front rather than adding them one at a
-time later.
+also approving that it may send users to exactly those origins. Every change to the widget's fields
+after approval goes through review again, so list every origin you need up front rather than adding them one at a time
+later. A wildcard gets a closer look: it has to sit on a domain you own.
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
@@ -1492,7 +1625,8 @@ Test your widget against a real host before submitting, rather than debugging bl
 
 1. Build and host your widget wherever you'll eventually deploy it (or any throwaway HTTPS URL —
    it doesn't need to be its final location yet).
-2. Register it as above, using a test/personal ivCampus org if you have one.
+2. Submit it in the testing organisation, as described in
+   [Submitting your widget](#submitting-your-widget). It renders there right away.
 3. Watch your widget's own `onContextChange`/console output, and the browser's devtools Network
    and Console tabs, for handshake or origin errors.
 
@@ -1508,8 +1642,8 @@ Test your widget against a real host before submitting, rather than debugging bl
 - **External links are opened by the host, not by your widget.** That is deliberate: your widget is
   never granted the right to open windows — it may only ask ([`openUrl()`](#opening-links-out-of-your-widget)),
   and the host checks the origin against your `allowedOrigins` and opens only during a real user
-  gesture. The open always uses `noopener,noreferrer`, so the opened page gets no handle back to
-  the campus.
+  gesture. The host clears `window.opener` before the page loads, so the opened page gets no handle
+  back to the campus. It can see the campus origin as the referrer, but not the path.
 - Never receives the end user's real ivCampus credentials, in any form.
 - All messages are validated against `event.source === window.parent` and, after the first
   accepted message, a pinned expected origin — see [the protocol section](#the-protocol-if-youre-not-using-this-sdk)

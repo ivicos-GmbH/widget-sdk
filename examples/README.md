@@ -31,13 +31,15 @@ bestimmt der Host, und deine eigene Seite scrollt in dem Bereich, den sie bekomm
    curl -sI https://deine-url.example.com/ | grep -i "x-frame-options\|content-security-policy"
    ```
 
-2. Reiche es unter **Campus-Einstellungen → Externe Widgets → Widget einreichen** ein. Trage als
+2. Reiche es in der Test-Organisation unter **CAMPUS Konfiguration → Integrationen → Zusätzliche
+   Widgets → Widget einreichen** ein (Zugang über [support@ivicos.eu](mailto:support@ivicos.eu), siehe
+   [Dein Widget einreichen](../README.md#dein-widget-einreichen)). Trage als
    Widget-ID exakt `hello-widget` ein — oder ändere `WIDGET_ID` in der HTML-Datei auf die ID, die du
    verwendest. **Beide müssen Zeichen für Zeichen übereinstimmen**, sonst antwortet der Host nie und
    das Widget läuft nach 10 Sekunden in einen Timeout.
 
-3. Warte auf die Freigabe, aktiviere das Widget und öffne es in einem Raum oder auf dem
-   persönlichen Dashboard.
+3. Aktiviere das Widget in derselben Liste (es steht dort als **Im Test (nur diese Organisation)**)
+   und öffne es in einem Raum oder auf dem persönlichen Dashboard.
 
 Öffnest du die Datei direkt im Browser statt eingebettet, sagt sie das ausdrücklich, statt hängen zu
 bleiben. Das ist der schnellste Test dafür, dass die Datei überhaupt ausgeliefert wird.
@@ -89,12 +91,15 @@ Start from `sdk-widget` for a real widget: the SDK handles origin pinning, the h
    curl -sI https://your-url.example.com/ | grep -i "x-frame-options\|content-security-policy"
    ```
 
-2. Submit it under **Campus Settings → External widgets → Submit a widget**. Use exactly
+2. Submit it in the testing organisation under **CAMPUS settings → Integration → Additional widgets →
+   Submit a widget** (access via [support@ivicos.eu](mailto:support@ivicos.eu), see
+   [Submitting your widget](../README.md#submitting-your-widget)). Use exactly
    `hello-widget` as the Widget ID — or change `WIDGET_ID` in the HTML file to whichever ID you use.
    **The two must match character for character**, or the host never answers and the widget times
    out after 10 seconds.
 
-3. Wait for approval, enable the widget, and open it in a room or on the Personal Dashboard.
+3. Enable the widget in the same list (it shows as **Testing (this org only)**) and open it in a
+   room or on the Personal Dashboard.
 
 Opened directly in a browser rather than embedded, the file says so explicitly instead of hanging —
 the quickest way to confirm it is being served at all.
