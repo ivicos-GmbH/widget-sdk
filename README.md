@@ -723,8 +723,9 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    **Widget-Vorschau**, die es öffnet, ohne es in einem Bereich einzuschalten, und zwei Symbole:
    **Bearbeiten** (Stift) und **Löschen** (Papierkorb), das es aus der Test-Organisation und der
    Registry entfernt. Du kannst es danach mit derselben Widget-ID erneut einreichen. Zur Prüfung
-   einreichen, bearbeiten und löschen kannst du als die Person, die das Widget angelegt hat; der
-   Owner der Organisation kann es auch bearbeiten und löschen, andere Manager nicht.
+   einreichen und löschen kannst nur du als die Person, die das Widget angelegt hat. Der Owner der
+   Organisation kann es auch bearbeiten, mit dem Stift in der Liste der zusätzlichen Widgets;
+   andere Manager nicht.
 
 4. **Zur Prüfung einreichen.** Wenn es funktioniert, klick im Seitenbereich **Deine Einreichungen**
    auf seiner Karte auf **Zur Prüfung einreichen**. Es wechselt auf **In Prüfung** und wird nirgends
@@ -1538,8 +1539,9 @@ widget to production. You never submit to production yourself.
    strip to open them in a side panel. There, a widget in testing has **Preview widget**, which opens
    it without turning it on in an area, and two icons: **Edit** (pencil) and **Delete** (bin), which
    removes it from the testing organisation and the registry. You can submit it again later with the
-   same widget ID. Submitting for review, editing and deleting are for you as the widget's creator;
-   the organisation's owner can also edit and delete it, other managers can't.
+   same widget ID. Submitting for review and deleting are for you as the widget's creator. The
+   organisation's owner can also edit it, with the pencil in the list of additional widgets; other
+   managers can't.
 
 4. **Submit it for review.** When it works, click **Submit for review** on its card in the **Your
    submissions** panel. It moves to **In review** and doesn't render anywhere until a reviewer decides:
