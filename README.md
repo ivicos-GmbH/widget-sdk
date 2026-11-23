@@ -456,6 +456,14 @@ Einreichung dürfen geöffnet werden — siehe [Dein Widget einreichen](#dein-wi
 eigene Origin deines Widgets ist immer erlaubt und muss nicht deklariert werden: Sie ist ohnehin
 schon in deinem Frame geladen. Alles andere ergibt `denied`.
 
+Musst du auf viele Subdomains deiner eigenen Domain verlinken (etwa eine Adresse pro Kunde), trage
+deine Domain im Einreichungsformular im Feld „Alle Subdomains deiner Domain" ein; sie wird als
+Platzhalter `https://*.example.com` in `allowedOrigins` gespeichert. Er deckt jede Subdomain von `example.com` in
+jeder Tiefe ab (`kunde-a.example.com`, `a.b.example.com`), aber nicht `example.com` selbst — die
+trägst du bei Bedarf als eigene Zeile ein. Pro Widget ist ein Platzhalter erlaubt, neben beliebigen
+exakten Origins. Endungen, unter denen jeder registrieren oder hosten kann (`*.de`, `*.co.uk`,
+`*.vercel.app`, `*.github.io`), werden abgelehnt.
+
 **Rufe `openUrl()` aus einem Klick-Handler auf.** Der Host öffnet nur, solange eine echte
 Nutzerinteraktion wirkt, und die ist nach wenigen Sekunden vorbei. Aus einem `setTimeout`, einem
 `useEffect` oder dem Callback eines Daten-Ladevorgangs bekommst du zuverlässig `denied`. Das ist
@@ -695,8 +703,8 @@ bringt das freigegebene Widget anschließend in die Produktion. In die Produktio
    | Placement | Raum, Persönliches Dashboard oder beides — mindestens eines ist erforderlich |
    | Webseite | optional; HTTPS-Link auf eine Seite, die erklärt, was dein Widget tut — siehe unten |
    | E-Mail für Prüfungs-Updates | optional; die E-Mails zu jeder Prüfungsentscheidung gehen dann an diese Adresse statt an die deines Kontos — siehe Schritt 4 |
-   | Seiten, zu denen dieses Widget Nutzer weiterleiten darf (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, keine Wildcards), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
-   | Alle Subdomains deiner Domain | optional; eine Domain wie `example.com`; dein Widget darf dann jede Seite unter `https://*.example.com` öffnen |
+   | Seiten, zu denen dieses Widget Nutzer weiterleiten darf (`allowedOrigins`) | optional; bis zu 10 reine `https:`-Origins (Schema, Host, optional Port — kein Pfad, keine Query, hier keine Wildcards: dafür ist das Feld darunter), die dein Widget über [`openUrl()`](#links-aus-deinem-widget-öffnen) öffnen darf |
+   | Alle Subdomains deiner Domain | optional; eine Domain wie `example.com`; dein Widget darf dann jede Seite unter `https://*.example.com` öffnen. Gespeichert als `https://*.example.com` in `allowedOrigins`, zählt als einer der 10 Einträge |
 
    Die optionalen Felder stehen zusammen in einem eigenen Abschnitt unter den Pflichtfeldern. Der
    Abschnitt ist offen, wenn das Formular aufgeht, und du kannst ihn zuklappen.
@@ -776,7 +784,8 @@ Ein gesperrtes Widget wird überall dort nicht mehr gerendert, wo es aktiviert w
 **`allowedOrigins` wird von einem Menschen geprüft.** Das Feld ist keine Formalie: Mit der Freigabe
 deines Widgets wird zugleich freigegeben, dass es Nutzer:innen an genau diese Origins schicken darf.
 Jede Änderung an den Feldern des Widgets nach der Freigabe geht erneut durch die Prüfung. Nimm also lieber gleich alle Origins
-auf, die du brauchst, statt sie später einzeln nachzureichen.
+auf, die du brauchst, statt sie später einzeln nachzureichen. Ein Platzhalter wird besonders genau
+geprüft: Er muss auf einer Domain stehen, die dir gehört.
 
 **Die eine Sache, die exakt stimmen muss: deine registrierte Widget-ID und die `widgetId`, mit der sich deine
 Seite selbst ankündigt (in `sdk.init({ widgetId: '...' })`, oder der rohen `ready`-Nachricht, falls du das SDK
@@ -1284,6 +1293,14 @@ can be opened — see [Submitting your widget](#submitting-your-widget). Your wi
 always permitted and does not need declaring: it is already loaded in your frame, so opening it
 exposes nothing new. Anything else answers `denied`.
 
+If you need to link to many subdomains of your own domain (one address per customer, say), enter
+your domain in the submission form's "All subdomains of your domain" field; it is stored as the
+wildcard `https://*.example.com` in `allowedOrigins`. It covers every subdomain of `example.com` at any depth
+(`customer-a.example.com`, `a.b.example.com`) but not `example.com` itself — list that on its own
+line if you need it. One wildcard is allowed per widget, next to any number of exact origins.
+Endings anyone can register or host under (`*.de`, `*.co.uk`, `*.vercel.app`, `*.github.io`) are
+refused.
+
 **Call `openUrl()` from a click handler.** The host only opens while a real user gesture is in
 effect, and that lapses after a few seconds. From a `setTimeout`, a `useEffect` or a data-load
 callback you will reliably get `denied`. That is deliberate: it makes popup spam physically
@@ -1513,8 +1530,8 @@ widget to production. You never submit to production yourself.
    | Placement | Room, Personal dashboard, or both — at least one is required |
    | Website | optional; https link to a page explaining what your widget does — see below |
    | Email for review updates | optional; the email about each review decision then goes to this address instead of your account's — see step 4 |
-   | Sites this widget may send people to (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
-   | All subdomains of your domain | optional; a domain such as `example.com`; your widget may then open any page under `https://*.example.com` |
+   | Sites this widget may send people to (`allowedOrigins`) | optional; up to 10 bare `https:` origins (scheme, host, optional port — no path, no query, no wildcards here: use the field below) your widget may open via [`openUrl()`](#opening-links-out-of-your-widget) |
+   | All subdomains of your domain | optional; a domain such as `example.com`; your widget may then open any page under `https://*.example.com`. Stored as `https://*.example.com` in `allowedOrigins`, counts as one of the 10 entries |
 
    The optional fields sit together in their own section below the required ones. The section is
    open when the form opens, and you can collapse it.
@@ -1589,7 +1606,7 @@ A suspended widget stops rendering everywhere it was enabled (see
 **`allowedOrigins` is reviewed by a human.** The field is not a formality: approving your widget is
 also approving that it may send users to exactly those origins. Every change to the widget's fields
 after approval goes through review again, so list every origin you need up front rather than adding them one at a time
-later.
+later. A wildcard gets a closer look: it has to sit on a domain you own.
 
 **The one thing to get exactly right: your registered Widget ID and the `widgetId` your page
 announces itself as (in `sdk.init({ widgetId: '...' })`, or the raw `ready` message if not using
